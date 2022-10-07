@@ -1,13 +1,29 @@
 package main
 
 import (
+	"back/controllers/login"
 	"back/controllers/mock_data"
 	"back/database"
-	"back/login"
+	"back/models/gitlab"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
+
+func testingMT() {
+	client := gitlab.GetClient()
+	runners, _, err := gitlab.GetAllRunners(client, 1, 10)
+	if err != nil {
+		fmt.Printf("Error getting all runners: %s", err.Error())
+		return
+	}
+
+	for _, r := range runners {
+		action := func() error {
+			j, _, err := gitlab.GetRunnerJobs(client, r.ID, "", 1, 10)
+		}
+	}
+}
 
 func main() {
 

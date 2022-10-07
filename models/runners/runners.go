@@ -28,9 +28,9 @@ type Runner struct {
 	MaxConcurrent  int       `json:"max_concurent" gorm:"max_concurrent"`
 }
 
-func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (Runner, error) {
+func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (*Runner, error) {
 	if rd == nil {
-		return Runner{}, errors.New("Error, invalid gitlab runner details received")
+		return nil, errors.New("Error, invalid gitlab runner details received")
 	}
 	r := Runner{
 		ID:             rd.ID,
@@ -50,7 +50,7 @@ func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (Runner, error) {
 		MaxConcurrent:  1,
 	}
 
-	return r, nil
+	return &r, nil
 }
 
 func GetRunner(runnerID uint) (Runner, error) {

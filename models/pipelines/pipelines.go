@@ -21,9 +21,9 @@ type Pipeline struct {
 	UpdatedAt      time.Time `json:"updated_at" gorm:"updated_at"`
 }
 
-func TranslateGLPipelineToPipeline(glp *gl.Pipeline) (Pipeline, error) {
+func TranslateGLPipelineToPipeline(glp *gl.Pipeline) (*Pipeline, error) {
 	if glp == nil {
-		return Pipeline{}, errors.New("Error, invalid gitlab pipeline received")
+		return nil, errors.New("Error, invalid gitlab pipeline received")
 	}
 
 	p := Pipeline{
@@ -36,7 +36,7 @@ func TranslateGLPipelineToPipeline(glp *gl.Pipeline) (Pipeline, error) {
 		CreatedAt: *glp.CreatedAt,
 		UpdatedAt: *glp.UpdatedAt,
 	}
-	return p, nil
+	return &p, nil
 }
 
 func init() {

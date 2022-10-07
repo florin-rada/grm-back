@@ -46,6 +46,17 @@ type JobSearchArgs struct {
 	PerPage         int        `json:"per_page,omitempty"`
 }
 
+type JobsQueueItem struct {
+	Args            []interface{}
+	Function        interface{}
+	ResponseChannel interface{}
+}
+
+func (jqi *JobsQueueItem) ExecuteTask() {
+	resp := []interface{}{jqi.Function.(func(...jqi.Args))}
+	fmt.Printf("%+v", resp)
+}
+
 func (j *Job) Save() error {
 	if j.InternalUserId <= 0 {
 		return errors.New("Error, User id must be greater than 0")
@@ -62,9 +73,9 @@ func (j *Job) Save() error {
 	return nil
 }
 
-func TranslateGLJobToJob(gljob *gl.Job) (Job, error) {
+func TranslateGLJobToJob(gljob *gl.Job) (*Job, error) {
 	if gljob == nil {
-		return Job{}, errors.New("Invalid gitlab job received")
+		return &Job{}, errors.New("Invalid gitlab job received")
 	}
 	j := Job{
 		ID:             gljob.ID,
@@ -81,7 +92,7 @@ func TranslateGLJobToJob(gljob *gl.Job) (Job, error) {
 		URL:            gljob.WebURL,
 		Stage:          gljob.Stage,
 	}
-	return j, nil
+	return &j, nil
 }
 
 func GetRunnerJobs(idRunner uint, idUser uint, page int, perPage int) ([]Job, error) {
@@ -160,8 +171,6 @@ func SearchRunnerJobs(idRunner uint, idUser uint, params JobSearchArgs) ([]Job, 
 	}
 	return jobs, nil
 }
-
-func SyncRunnerJobs()
 
 func init() {
 	resp := db.DB.AutoMigrate(&Job{})

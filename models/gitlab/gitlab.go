@@ -170,6 +170,18 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 
 }
 
+func GetClient() *gl.Client {
+	var err error
+	if client == nil {
+		client, err = gl.NewClient(token, gl.WithBaseURL("https://gitlab.com/api/v4"))
+		if err != nil {
+			panic(fmt.Sprintf("Error creating gitlab client: %s", err.Error()))
+		}
+		return client
+	}
+	return client
+}
+
 func init() {
 	var err error
 	client, err = gl.NewClient(token, gl.WithBaseURL("https://gitlab.com/api/v4"))
