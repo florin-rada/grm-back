@@ -11,7 +11,7 @@ import (
 
 type Runner struct {
 	InternalUserId int       `json:"internal_user_id,omitempty" gorm:"internal_user_id"`
-	ID             int       `json:"id" gorm:"id"`
+	ID             int       `json:"id" gorm:"id,primaryKey"`
 	Description    string    `json:"description" gorm:"description"`
 	Active         bool      `json:"active" gorm:"active"`
 	Paused         bool      `json:"paused" gorm:"paused"`
@@ -25,6 +25,7 @@ type Runner struct {
 	Locked         bool      `json:"locked" gorm:"locked"`
 	MaximumTimeout int       `json:"maximum_timeout" gorm:"maximum_timeout"`
 	ContactedAt    time.Time `json:"contacted_at" gorm:"contacted_at"`
+	MaxConcurrent  int       `json:"max_concurent" gorm:"max_concurrent"`
 }
 
 func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (Runner, error) {
@@ -46,8 +47,27 @@ func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (Runner, error) {
 		Locked:         rd.Locked,
 		MaximumTimeout: rd.MaximumTimeout,
 		ContactedAt:    *rd.ContactedAt,
+		MaxConcurrent:  1,
 	}
 
+	return r, nil
+}
+
+func GetRunner(runnerID uint) (Runner, error) {
+	r := Runner{}
+	resp := db.DB.Find(&r, runnerID)
+	if resp.Error != nil {
+		return Runner{}, resp.Error
+	}
+	return r, nil
+}
+
+func GetUserRunners(userID uint) ([]Runner, error) {
+	r := []Runner{}
+	resp := db.DB.Where("internal_user_id=?", userID).Find(&r)
+	if resp.Error != nil {
+		return []Runner{}, resp.Error
+	}
 	return r, nil
 }
 
