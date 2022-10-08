@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	gl "github.com/xanzy/go-gitlab"
 )
 
 func testingMT() {
@@ -17,10 +18,13 @@ func testingMT() {
 		fmt.Printf("Error getting all runners: %s", err.Error())
 		return
 	}
-
+	args := struct {
+		Response *[]gitlab.Job
+		Err      error
+	}{}
 	for _, r := range runners {
 		action := func() error {
-			j, _, err := gitlab.GetRunnerJobs(client, r.ID, "", 1, 10)
+			j, _, err := client.Runners.ListRunnerJobs(r.ID, &gl.ListRunnerJobsOptions{})
 		}
 	}
 }

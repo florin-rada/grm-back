@@ -7,7 +7,6 @@ import (
 
 type QueueItem interface {
 	ExecuteTask() error
-	SendResponse()
 }
 
 var queue chan QueueItem
@@ -23,7 +22,6 @@ func executor() {
 		if err != nil {
 			fmt.Printf("Error executing task for %+v", qi)
 		}
-		qi.SendResponse()
 	}
 }
 

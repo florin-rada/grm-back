@@ -47,14 +47,11 @@ type JobSearchArgs struct {
 }
 
 type JobsQueueItem struct {
-	Args            []interface{}
-	Function        interface{}
-	ResponseChannel interface{}
+	Task func() error
 }
 
-func (jqi *JobsQueueItem) ExecuteTask() {
-	resp := []interface{}{jqi.Function.(func(...jqi.Args))}
-	fmt.Printf("%+v", resp)
+func (jqi *JobsQueueItem) ExecuteTask() error {
+	return jqi.Task()
 }
 
 func (j *Job) Save() error {
