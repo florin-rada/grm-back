@@ -47,11 +47,11 @@ type JobSearchArgs struct {
 }
 
 type JobsQueueItem struct {
-	Task func() error
+	Task func()
 }
 
-func (jqi *JobsQueueItem) ExecuteTask() error {
-	return jqi.Task()
+func (jqi JobsQueueItem) ExecuteTask() {
+	jqi.Task()
 }
 
 func (j *Job) Save() error {

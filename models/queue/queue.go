@@ -1,12 +1,11 @@
 package queue
 
 import (
-	"fmt"
 	"runtime"
 )
 
 type QueueItem interface {
-	ExecuteTask() error
+	ExecuteTask()
 }
 
 var queue chan QueueItem
@@ -18,10 +17,8 @@ func AddToQueue(item QueueItem) {
 func executor() {
 	for {
 		qi := <-queue
-		err := qi.ExecuteTask()
-		if err != nil {
-			fmt.Printf("Error executing task for %+v", qi)
-		}
+		qi.ExecuteTask()
+
 	}
 }
 

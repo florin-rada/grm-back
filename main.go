@@ -5,6 +5,8 @@ import (
 	"back/controllers/mock_data"
 	"back/database"
 	"back/models/gitlab"
+	"back/models/jobs"
+	"back/models/queue"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -18,14 +20,28 @@ func testingMT() {
 		fmt.Printf("Error getting all runners: %s", err.Error())
 		return
 	}
-	args := struct {
-		Response *[]gitlab.Job
-		Err      error
-	}{}
+	output := make(chan struct {
+		Jobs []*gl.Job
+		Err  error
+	}, len(runners))
+	defer close(output)
 	for _, r := range runners {
-		action := func() error {
-			j, _, err := client.Runners.ListRunnerJobs(r.ID, &gl.ListRunnerJobsOptions{})
+		action := func() {
+			j, _, err := gitlab.GetRunnerJobs(client, r.ID, "", 1, 10)
+			output <- struct {
+				Jobs []*gl.Job
+				Err  error
+			}{Jobs: j, Err: err}
 		}
+		jqi := jobs.JobsQueueItem{
+			Task: action,
+		}
+		queue.AddToQueue(jqi)
+	}
+
+	for _, _ = range runners {
+		resp := <-output
+		fmt.Printf("Received output : %+v\n", resp)
 	}
 }
 
@@ -60,5 +76,6 @@ func main() {
 	if res.Error != nil {
 		panic(res.Error.Error())
 	}
+	testingMT()
 	r.Run(":8080")
 }

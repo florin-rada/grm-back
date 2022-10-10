@@ -3,9 +3,12 @@ package users
 import (
 	db "back/database"
 	"errors"
+	"fmt"
 	"net/mail"
 	re "regexp"
+	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -27,9 +30,43 @@ type UserCredential struct {
 }
 
 type UserToken struct {
-	IDUser   uint   `json:"id_user" gorm:"id_user"`
-	Token    string `json:"token" gorm:"token"`
-	DeviceID string `json:"device_id" gorm:"device_id"`
+	IDUser             uint       `json:"id_user" gorm:"id_user"`
+	Token              string     `json:"token" gorm:"token"`
+	RefreshToken       string     `json:"refresh_token" gorm:"refresh_token"`
+	DeviceID           string     `json:"device_id" gorm:"device_id"`
+	LoginDate          *time.Time `json:"login_date" gorm:"login_date"`
+	ExpireAfter        *time.Time `json:"expire_after" gorm:"expire_after"`
+	RefreshExpireAfter *time.Time `json:"refresh_expire_after" gorm:"refresh_expire_after"`
+}
+
+type RequestDeletion struct {
+	IDUser           uint       `json:"id_user" gorm:"id_user,unique"`
+	Token            string     `json:"token" gorm:"token"`
+	RequestConfirmed bool       `json:"request_confirmed" gorm:"request_confirmed"`
+	StartTime        *time.Time `json:"start_time" gorm:"start_time"`
+	ConfirmationTime *time.Time `json:"confirmation_time" gorm:"confirmation_time"`
+	ToDeleteTime     *time.Time `json:"to_delete_time" gorm:"to_delete_time"`
+}
+
+type Registration struct {
+	IDUser           uint       `json:"id_user" gorm:"id_user,unique"`
+	Token            string     `json:"token" gorm:"token"`
+	Confirmed        bool       `json:"confirmed" gorm:"confirmed"`
+	RegistrationDate *time.Time `json:"registration_date" gorm:"registration_date"`
+	ConfirmationDate *time.Time `json:"confirmation_date" gorm:"confirmation_date"`
+}
+
+type PasswordReset struct {
+	IDUser      uint       `json:"id_user" gorm:"id_user,unique"`
+	Token       string     `json:"token" gorm:"token"`
+	RequestDate *time.Time `json:"request_date" gorm:"request_date"`
+	BestBefore  *time.Time `json:"best_before" gorm:"best_before"`
+	Confirmed   bool       `json:"confirmed" gorm:"confirmed"`
+}
+
+type GitlabToken struct {
+	IDUser uint   `json:"id_user" gorm:"id_user,unique"`
+	Token  string `json:"token" gorm:"token"`
 }
 
 func ValidateUserPassword(email, password string) (bool, error) {
@@ -105,6 +142,12 @@ func GetUserCredential(email string) (UserCredential, error) {
 	return uc, nil
 }
 
+func BeginRegistrationFlow(tx *gorm.DB, email string) bool {
+	newUUID := uuid.New()
+	fmt.Printf("newUUID: %s", newUUID.String())
+	return true
+}
+
 func init() {
 	err := db.DB.AutoMigrate(&User{})
 	if err != nil {
@@ -117,5 +160,19 @@ func init() {
 	err = db.TokensDB.AutoMigrate(&UserToken{})
 	if err != nil {
 		panic("Error migrating user_tokens table")
+	}
+	err = db.TokensDB.AutoMigrate(&GitlabToken{})
+	if err != nil {
+		panic("Error migrating table gitlab_tokens table")
+	}
+
+	err = db.TokensDB.AutoMigrate(&Registration{})
+	if err != nil {
+		panic("Error migrating registrations table")
+	}
+
+	err = db.TokensDB.AutoMigrate(&RequestDeletion{})
+	if err != nil {
+		panic("Error migrating request_deletions table")
 	}
 }
