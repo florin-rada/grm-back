@@ -3,7 +3,6 @@ package users
 import (
 	db "back/database"
 	"errors"
-	"fmt"
 	"net/mail"
 	re "regexp"
 	"time"
@@ -18,6 +17,10 @@ const cost = 12
 var EmptyPassword error = errors.New("Error, empty password")
 var PasswordToShort error = errors.New("Error, password shorter than 10 characters")
 var PasswordMissingElements error = errors.New("Error, password must containt lower case, upper case, digit and at least a symbol")
+var EmptyEmail error = errors.New("Error, no email supplied")
+var EmptyToken error = errors.New("Error, no token supplied")
+var InvalidCredentials error = errors.New("Error, invalid credentials")
+var AlreadyConfirmed error = errors.New("Error, already confirmed this request")
 
 type User struct {
 	gorm.Model
@@ -71,34 +74,78 @@ type GitlabToken struct {
 
 func ValidateUserPassword(email, password string) (bool, error) {
 	if email == "" {
-		return false, errors.New("Error, no email supplied")
+		return false, EmptyEmail
 	}
 
 	if password == "" {
-		return false, errors.New("Error, no password supplied")
+		return false, EmptyPassword
 	}
 
 	uc, err := GetUserCredential(email)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, InvalidCredentials
+		}
 		return false, err
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(uc.Password), []byte(password))
 	if err != nil {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return false, InvalidCredentials
+		}
 		return false, err
 	}
 	return true, nil
 }
 
-func RegisterUser(email, password string) (User, error) {
+// CreateUser creates the new user and starts the registration confirmation process
+// It also validates that the email is valid
+func CreateUser(email, password string) (*User, error) {
 	if email == "" {
-		return User{}, errors.New("Error, invalid email")
+		return nil, errors.New("Error, invalid email")
 	}
 	_, err := mail.ParseAddress(email)
 	if err != nil {
-		return User{}, err
+		return nil, err
 	}
 
-	u := User{}
+	isGood, err := CheckPasswordStrength(password)
+	if err != nil {
+		return nil, err
+	}
+	if !isGood {
+		return nil, PasswordMissingElements
+	}
+
+	u := User{
+		Email: email,
+	}
+	hash, err := EncryptPassword(password)
+	if err != nil {
+		return nil, err
+	}
+	err = db.DB.Transaction(func(tx *gorm.DB) error {
+		resp := tx.Create(&u)
+		if resp.Error != nil {
+			return resp.Error
+		}
+
+		uc := UserCredential{
+			IDUser:   u.ID,
+			Password: hash,
+		}
+
+		resp = tx.Create(&uc)
+		if err != nil {
+			return resp.Error
+		}
+
+		err = BeginRegistrationFlow(tx, &u)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	return u, nil
 }
 
@@ -133,6 +180,17 @@ func CheckPasswordStrength(password string) (bool, error) {
 	return true, nil
 }
 
+func GetUser(email string) (*User, error) {
+	if email == "" {
+		return nil, EmptyEmail
+	}
+	u := User{}
+	resp := db.DB.Model(&u).Where("email=?", email).Find(&u)
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+	return &u, nil
+}
 func GetUserCredential(email string) (UserCredential, error) {
 	uc := UserCredential{}
 	resp := db.TokensDB.Where("email=?", email).Find(&uc)
@@ -142,10 +200,70 @@ func GetUserCredential(email string) (UserCredential, error) {
 	return uc, nil
 }
 
-func BeginRegistrationFlow(tx *gorm.DB, email string) bool {
+func EncryptPassword(password string) (string, error) {
+	if password == "" {
+		return "", EmptyEmail
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), cost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+func BeginRegistrationFlow(tx *gorm.DB, u *User) error {
 	newUUID := uuid.New()
-	fmt.Printf("newUUID: %s", newUUID.String())
-	return true
+	regDate := time.Now()
+	r := Registration{
+		IDUser:           u.ID,
+		Token:            newUUID.String(),
+		Confirmed:        false,
+		RegistrationDate: &regDate,
+	}
+	resp := tx.Create(&r)
+	if resp.Error != nil {
+		return resp.Error
+	}
+
+	// send email
+
+	return nil
+}
+
+func ConfirmRegistration(tx *gorm.DB, token string) (bool, error) {
+	if token == "" {
+		return false, errors.New("Error, no token supplied")
+	}
+
+	r := Registration{}
+	resp := db.TokensDB.Model(&r).Where("token=?", token).Find(&r)
+	if resp.Error != nil {
+		return false, resp.Error
+	}
+	if r.ConfirmationDate != nil {
+		return false, AlreadyConfirmed
+	}
+
+	if r.Confirmed {
+		return false, AlreadyConfirmed
+	}
+	cd := time.Now()
+	r.ConfirmationDate = &cd
+	r.Confirmed = true
+	resp = tx.Save(&r)
+	if resp.Error != nil {
+		return false, resp.Error
+	}
+	return true, nil
+}
+
+func GetRegistrationForUser(id uint) (*Registration, error) {
+	r := Registration{}
+	resp := db.TokensDB.Find(&r, id)
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+	return &r, nil
 }
 
 func init() {

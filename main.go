@@ -4,16 +4,12 @@ import (
 	"back/controllers/login"
 	"back/controllers/mock_data"
 	"back/database"
-	"back/models/gitlab"
-	"back/models/jobs"
-	"back/models/queue"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	gl "github.com/xanzy/go-gitlab"
 )
 
-func testingMT() {
+/* func testingMT() {
 	client := gitlab.GetClient()
 	runners, _, err := gitlab.GetAllRunners(client, 1, 10)
 	if err != nil {
@@ -43,7 +39,7 @@ func testingMT() {
 		resp := <-output
 		fmt.Printf("Received output : %+v\n", resp)
 	}
-}
+} */
 
 func main() {
 
@@ -76,6 +72,6 @@ func main() {
 	if res.Error != nil {
 		panic(res.Error.Error())
 	}
-	testingMT()
+
 	r.Run(":8080")
 }
