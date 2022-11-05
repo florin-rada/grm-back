@@ -3,6 +3,7 @@ package main
 import (
 	"back/controllers/login"
 	"back/controllers/mock_data"
+	"back/controllers/users"
 	"back/database"
 	"fmt"
 
@@ -44,7 +45,7 @@ import (
 func main() {
 
 	r := gin.Default()
-	authorized := r.Group("/v1")
+	authorized := r.Group("authorized")
 	authorized.Use(login.CheckLoginMidleware())
 	{
 		authorized.GET("get", func(c *gin.Context) {
@@ -53,6 +54,9 @@ func main() {
 			})
 		})
 	}
+	r.POST("/register", users.Register)
+	r.GET("/confirm_registration", users.ConfirmRegistration)
+
 	r.GET("/mock_data", mock_data.ReturnMockData)
 	r.StaticFile("/", "../../front/build/index.html")
 	r.Static("/static", "../../front/build/static")
@@ -64,11 +68,11 @@ func main() {
 	r.StaticFile("/asset-manifest.json", "../../front/build/asset-manifest.json")
 	r.StaticFile("/manifest.json", "../../front/build/manifest.json")
 	fmt.Printf("hello, world\n")
-	res := database.DB.Raw("SHOW TABLES")
+	res := database.PublicDB.Raw("SHOW TABLES")
 	if res.Error != nil {
 		panic(res.Error.Error())
 	}
-	res = database.TokensDB.Raw("SHOW TABLES")
+	res = database.PrivateDB.Raw("SHOW TABLES")
 	if res.Error != nil {
 		panic(res.Error.Error())
 	}

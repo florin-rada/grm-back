@@ -14,13 +14,21 @@ import (
 
 const cost = 12
 
-var EmptyPassword error = errors.New("Error, empty password")
-var PasswordToShort error = errors.New("Error, password shorter than 10 characters")
-var PasswordMissingElements error = errors.New("Error, password must containt lower case, upper case, digit and at least a symbol")
-var EmptyEmail error = errors.New("Error, no email supplied")
-var EmptyToken error = errors.New("Error, no token supplied")
-var InvalidCredentials error = errors.New("Error, invalid credentials")
-var AlreadyConfirmed error = errors.New("Error, already confirmed this request")
+var ErrEmptyPassword error = errors.New("empty password")
+var ErrPasswordToShort error = errors.New("password shorter than 10 characters")
+var ErrPasswordMissingElements error = errors.New("password must containt lower case, upper case, digit and at least a symbol")
+var ErrEmptyEmail error = errors.New("no email supplied")
+var ErrEmptyToken error = errors.New("no token supplied")
+var ErrInvalidCredentials error = errors.New("invalid credentials")
+var ErrAlreadyConfirmed error = errors.New("already confirmed this request")
+
+type PublicModel struct {
+	PublicDB *gorm.DB
+}
+
+type PrivateModel struct {
+	PrivateDB *gorm.DB
+}
 
 type User struct {
 	gorm.Model
@@ -52,7 +60,7 @@ type RequestDeletion struct {
 }
 
 type Registration struct {
-	IDUser           uint       `json:"id_user" gorm:"id_user,unique"`
+	IDUser           uint       `json:"id_user" gorm:"id_user,primarykey,unique"`
 	Token            string     `json:"token" gorm:"token"`
 	Confirmed        bool       `json:"confirmed" gorm:"confirmed"`
 	RegistrationDate *time.Time `json:"registration_date" gorm:"registration_date"`
@@ -60,7 +68,7 @@ type Registration struct {
 }
 
 type PasswordReset struct {
-	IDUser      uint       `json:"id_user" gorm:"id_user,unique"`
+	IDUser      uint       `json:"id_user" gorm:"id_user,primarykey,unique"`
 	Token       string     `json:"token" gorm:"token"`
 	RequestDate *time.Time `json:"request_date" gorm:"request_date"`
 	BestBefore  *time.Time `json:"best_before" gorm:"best_before"`
@@ -74,24 +82,24 @@ type GitlabToken struct {
 
 func ValidateUserPassword(email, password string) (bool, error) {
 	if email == "" {
-		return false, EmptyEmail
+		return false, ErrEmptyEmail
 	}
 
 	if password == "" {
-		return false, EmptyPassword
+		return false, ErrEmptyPassword
 	}
 
 	uc, err := GetUserCredential(email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, InvalidCredentials
+			return false, ErrInvalidCredentials
 		}
 		return false, err
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(uc.Password), []byte(password))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return false, InvalidCredentials
+			return false, ErrInvalidCredentials
 		}
 		return false, err
 	}
@@ -102,7 +110,7 @@ func ValidateUserPassword(email, password string) (bool, error) {
 // It also validates that the email is valid
 func CreateUser(email, password string) (*User, error) {
 	if email == "" {
-		return nil, errors.New("Error, invalid email")
+		return nil, errors.New("invalid email")
 	}
 	_, err := mail.ParseAddress(email)
 	if err != nil {
@@ -114,7 +122,7 @@ func CreateUser(email, password string) (*User, error) {
 		return nil, err
 	}
 	if !isGood {
-		return nil, PasswordMissingElements
+		return nil, ErrPasswordMissingElements
 	}
 
 	u := User{
@@ -124,7 +132,7 @@ func CreateUser(email, password string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = db.DB.Transaction(func(tx *gorm.DB) error {
+	err = db.PublicDB.Transaction(func(tx *gorm.DB) error {
 		resp := tx.Create(&u)
 		if resp.Error != nil {
 			return resp.Error
@@ -134,66 +142,73 @@ func CreateUser(email, password string) (*User, error) {
 			IDUser:   u.ID,
 			Password: hash,
 		}
+		err := db.PrivateDB.Transaction(func(tx *gorm.DB) error {
+			resp = tx.Create(&uc)
+			if resp.Error != nil {
+				return resp.Error
+			}
 
-		resp = tx.Create(&uc)
-		if err != nil {
-			return resp.Error
-		}
+			err = BeginRegistrationFlow(tx, &u)
+			return err
+		})
 
-		err = BeginRegistrationFlow(tx, &u)
 		if err != nil {
 			return err
 		}
 		return nil
 	})
-	return u, nil
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
 }
 
 func CheckPasswordStrength(password string) (bool, error) {
 	if password == "" {
-		return false, EmptyPassword
+		return false, ErrEmptyPassword
 	}
 	if len(password) < 10 {
-		return false, PasswordToShort
+		return false, ErrPasswordToShort
 	}
 	match, err := re.Match(`[0-9]*`, []byte(password))
 	if err != nil {
 		return false, errors.New("Error, checking password strength")
 	}
 	if !match {
-		return false, PasswordMissingElements
+		return false, ErrPasswordMissingElements
 	}
 	match, err = re.Match(`[a-zA-Z]*`, []byte(password))
 	if err != nil {
 		return false, errors.New("Error, checking password strength")
 	}
 	if !match {
-		return false, PasswordMissingElements
+		return false, ErrPasswordMissingElements
 	}
 	match, err = re.Match(`[!@#%^&*()_\-=+,.\/?~\{\}:;'"\\|<>]*`, []byte(password))
 	if err != nil {
 		return false, errors.New("Error, checking password strength")
 	}
 	if !match {
-		return false, PasswordMissingElements
+		return false, ErrPasswordMissingElements
 	}
 	return true, nil
 }
 
 func GetUser(email string) (*User, error) {
 	if email == "" {
-		return nil, EmptyEmail
+		return nil, ErrEmptyEmail
 	}
 	u := User{}
-	resp := db.DB.Model(&u).Where("email=?", email).Find(&u)
+	resp := db.PublicDB.Model(&u).Where("email=?", email).Find(&u)
 	if resp.Error != nil {
 		return nil, resp.Error
 	}
 	return &u, nil
 }
+
 func GetUserCredential(email string) (UserCredential, error) {
 	uc := UserCredential{}
-	resp := db.TokensDB.Where("email=?", email).Find(&uc)
+	resp := db.PrivateDB.Where("email=?", email).Find(&uc)
 	if resp.Error != nil {
 		return UserCredential{}, resp.Error
 	}
@@ -202,7 +217,7 @@ func GetUserCredential(email string) (UserCredential, error) {
 
 func EncryptPassword(password string) (string, error) {
 	if password == "" {
-		return "", EmptyEmail
+		return "", ErrEmptyEmail
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	if err != nil {
@@ -230,36 +245,36 @@ func BeginRegistrationFlow(tx *gorm.DB, u *User) error {
 	return nil
 }
 
-func ConfirmRegistration(tx *gorm.DB, token string) (bool, error) {
+func ConfirmRegistration(tx *gorm.DB, token string) error {
 	if token == "" {
-		return false, errors.New("Error, no token supplied")
+		return ErrEmptyToken
 	}
 
 	r := Registration{}
-	resp := db.TokensDB.Model(&r).Where("token=?", token).Find(&r)
+	resp := tx.Model(&r).Where("token=?", token).Find(&r)
 	if resp.Error != nil {
-		return false, resp.Error
+		return resp.Error
 	}
 	if r.ConfirmationDate != nil {
-		return false, AlreadyConfirmed
+		return ErrAlreadyConfirmed
 	}
 
 	if r.Confirmed {
-		return false, AlreadyConfirmed
+		return ErrAlreadyConfirmed
 	}
 	cd := time.Now()
 	r.ConfirmationDate = &cd
 	r.Confirmed = true
-	resp = tx.Save(&r)
+	resp = tx.Where("id_user=?", r.IDUser).Save(&r)
 	if resp.Error != nil {
-		return false, resp.Error
+		return resp.Error
 	}
-	return true, nil
+	return nil
 }
 
 func GetRegistrationForUser(id uint) (*Registration, error) {
 	r := Registration{}
-	resp := db.TokensDB.Find(&r, id)
+	resp := db.PrivateDB.Find(&r, id)
 	if resp.Error != nil {
 		return nil, resp.Error
 	}
@@ -267,29 +282,29 @@ func GetRegistrationForUser(id uint) (*Registration, error) {
 }
 
 func init() {
-	err := db.DB.AutoMigrate(&User{})
+	err := db.PublicDB.AutoMigrate(&User{})
 	if err != nil {
 		panic("Error migrating users table")
 	}
-	err = db.TokensDB.AutoMigrate(&UserCredential{})
+	err = db.PrivateDB.AutoMigrate(&UserCredential{})
 	if err != nil {
 		panic("Error migrating user_credentials table")
 	}
-	err = db.TokensDB.AutoMigrate(&UserToken{})
+	err = db.PrivateDB.AutoMigrate(&UserToken{})
 	if err != nil {
 		panic("Error migrating user_tokens table")
 	}
-	err = db.TokensDB.AutoMigrate(&GitlabToken{})
+	err = db.PrivateDB.AutoMigrate(&GitlabToken{})
 	if err != nil {
 		panic("Error migrating table gitlab_tokens table")
 	}
 
-	err = db.TokensDB.AutoMigrate(&Registration{})
+	err = db.PrivateDB.AutoMigrate(&Registration{})
 	if err != nil {
 		panic("Error migrating registrations table")
 	}
 
-	err = db.TokensDB.AutoMigrate(&RequestDeletion{})
+	err = db.PrivateDB.AutoMigrate(&RequestDeletion{})
 	if err != nil {
 		panic("Error migrating request_deletions table")
 	}

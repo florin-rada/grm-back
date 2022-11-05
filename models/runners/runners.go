@@ -55,7 +55,7 @@ func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (*Runner, error) {
 
 func GetRunner(runnerID uint) (Runner, error) {
 	r := Runner{}
-	resp := db.DB.Find(&r, runnerID)
+	resp := db.PublicDB.Find(&r, runnerID)
 	if resp.Error != nil {
 		return Runner{}, resp.Error
 	}
@@ -64,7 +64,7 @@ func GetRunner(runnerID uint) (Runner, error) {
 
 func GetUserRunners(userID uint) ([]Runner, error) {
 	r := []Runner{}
-	resp := db.DB.Where("internal_user_id=?", userID).Find(&r)
+	resp := db.PublicDB.Where("internal_user_id=?", userID).Find(&r)
 	if resp.Error != nil {
 		return []Runner{}, resp.Error
 	}
@@ -72,7 +72,7 @@ func GetUserRunners(userID uint) ([]Runner, error) {
 }
 
 func init() {
-	resp := db.DB.AutoMigrate(&Runner{})
+	resp := db.PublicDB.AutoMigrate(&Runner{})
 	if resp != nil {
 		panic(fmt.Sprintf("Error automigrating pipelines table: %s", resp.Error()))
 	}

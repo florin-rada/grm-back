@@ -61,7 +61,7 @@ func (j *Job) Save() error {
 	if j.ID <= 0 {
 		return errors.New("Error, Job ID must be greater than 0")
 	}
-	resp := db.DB.Clauses(clause.OnConflict{
+	resp := db.PublicDB.Clauses(clause.OnConflict{
 		UpdateAll: true,
 	}).Create(&j)
 	if resp.Error != nil {
@@ -93,7 +93,7 @@ func TranslateGLJobToJob(gljob *gl.Job) (*Job, error) {
 }
 
 func GetRunnerJobs(idRunner uint, idUser uint, page int, perPage int) ([]Job, error) {
-	tr := db.DB.Model(&Job{})
+	tr := db.PublicDB.Model(&Job{})
 	tr = tr.Where("runner_id=?", idRunner)
 	tr = tr.Where("internal_user_id=?", idUser)
 	if perPage < 0 {
@@ -111,7 +111,7 @@ func GetRunnerJobs(idRunner uint, idUser uint, page int, perPage int) ([]Job, er
 }
 
 func SearchRunnerJobs(idRunner uint, idUser uint, params JobSearchArgs) ([]Job, error) {
-	tr := db.DB.Model(&Job{})
+	tr := db.PublicDB.Model(&Job{})
 	tr = tr.Where("runner_id=?", idRunner)
 	tr = tr.Where("internal_user_id=?", idUser)
 
@@ -170,7 +170,7 @@ func SearchRunnerJobs(idRunner uint, idUser uint, params JobSearchArgs) ([]Job, 
 }
 
 func init() {
-	resp := db.DB.AutoMigrate(&Job{})
+	resp := db.PublicDB.AutoMigrate(&Job{})
 	if resp != nil {
 		panic(fmt.Sprintf("Error migrating %s table: %s", "jobs", resp.Error()))
 	}

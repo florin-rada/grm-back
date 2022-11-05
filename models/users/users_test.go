@@ -12,45 +12,25 @@ func TestCheckPasswordStrength(t *testing.T) {
 		want    bool
 		wantErr bool
 	}{
-		struct {
-			name    string
-			args    args
-			want    bool
-			wantErr bool
-		}{
+		{
 			name:    "Valid password",
 			args:    args{password: "MyVal!dP@ssword"},
 			want:    true,
 			wantErr: false,
 		},
-		struct {
-			name    string
-			args    args
-			want    bool
-			wantErr bool
-		}{
+		{
 			name:    "Invalid password",
 			args:    args{password: "MyPassworda"},
 			want:    false,
 			wantErr: true,
 		},
-		struct {
-			name    string
-			args    args
-			want    bool
-			wantErr bool
-		}{
+		{
 			name:    "Invalid password",
 			args:    args{password: "My1Passworda"},
 			want:    false,
 			wantErr: true,
 		},
-		struct {
-			name    string
-			args    args
-			want    bool
-			wantErr bool
-		}{
+		{
 			name:    "Invalid password",
 			args:    args{password: "ShortPa!s"},
 			want:    false,

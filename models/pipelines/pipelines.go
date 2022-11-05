@@ -40,7 +40,7 @@ func TranslateGLPipelineToPipeline(glp *gl.Pipeline) (*Pipeline, error) {
 }
 
 func init() {
-	resp := db.DB.AutoMigrate(&Pipeline{})
+	resp := db.PublicDB.AutoMigrate(&Pipeline{})
 	if resp != nil {
 		panic(fmt.Sprintf("Error automigrating pipelines table: %s", resp.Error()))
 	}
