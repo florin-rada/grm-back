@@ -32,11 +32,11 @@ type PrivateModel struct {
 
 type User struct {
 	gorm.Model
-	Email string `json:"email" gorm:"email,unique"`
+	Email string `json:"email" gorm:"uniqueIndex:unique_email"`
 }
 
 type UserCredential struct {
-	IDUser   uint   `json:"id_user" gorm:"id_user,unique"`
+	IDUser   uint   `json:"id_user" gorm:"uniqueIndex;not null"`
 	Password string `json:"password" gorm:"password"`
 }
 
@@ -51,7 +51,7 @@ type UserToken struct {
 }
 
 type RequestDeletion struct {
-	IDUser           uint       `json:"id_user" gorm:"id_user,unique"`
+	IDUser           uint       `json:"id_user" gorm:"id_user;uniqueIndex;not null"`
 	Token            string     `json:"token" gorm:"token"`
 	RequestConfirmed bool       `json:"request_confirmed" gorm:"request_confirmed"`
 	StartTime        *time.Time `json:"start_time" gorm:"start_time"`
@@ -60,7 +60,7 @@ type RequestDeletion struct {
 }
 
 type Registration struct {
-	IDUser           uint       `json:"id_user" gorm:"id_user,primarykey,unique"`
+	IDUser           uint       `json:"id_user" gorm:"id_user;primarykey;uniqueIndex;not null"`
 	Token            string     `json:"token" gorm:"token"`
 	Confirmed        bool       `json:"confirmed" gorm:"confirmed"`
 	RegistrationDate *time.Time `json:"registration_date" gorm:"registration_date"`
@@ -68,7 +68,7 @@ type Registration struct {
 }
 
 type PasswordReset struct {
-	IDUser      uint       `json:"id_user" gorm:"id_user,primarykey,unique"`
+	IDUser      uint       `json:"id_user" gorm:"id_user;primarykey;unique"`
 	Token       string     `json:"token" gorm:"token"`
 	RequestDate *time.Time `json:"request_date" gorm:"request_date"`
 	BestBefore  *time.Time `json:"best_before" gorm:"best_before"`
@@ -76,7 +76,7 @@ type PasswordReset struct {
 }
 
 type GitlabToken struct {
-	IDUser uint   `json:"id_user" gorm:"id_user,unique"`
+	IDUser uint   `json:"id_user" gorm:"id_user;unique"`
 	Token  string `json:"token" gorm:"token"`
 }
 
