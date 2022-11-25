@@ -5,7 +5,6 @@ import (
 	"back/controllers/mock_data"
 	"back/controllers/users"
 	"back/database"
-	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -67,7 +66,7 @@ func main() {
 	r.StaticFile("/robots.txt.ico", "../../front/build/robots.txt.ico")
 	r.StaticFile("/asset-manifest.json", "../../front/build/asset-manifest.json")
 	r.StaticFile("/manifest.json", "../../front/build/manifest.json")
-	fmt.Printf("hello, world\n")
+	//fmt.Printf("hello, world\n")
 	res := database.PublicDB.Raw("SHOW TABLES")
 	if res.Error != nil {
 		panic(res.Error.Error())

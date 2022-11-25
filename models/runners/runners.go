@@ -62,6 +62,14 @@ func GetRunner(runnerID uint) (Runner, error) {
 	return r, nil
 }
 
+func UpdateRunnerOnGit(r Runner) error {
+	return nil
+}
+
+func UpdateRunner(r Runner) error {
+	return nil
+}
+
 func GetUserRunners(userID uint) ([]Runner, error) {
 	r := []Runner{}
 	resp := db.PublicDB.Where("internal_user_id=?", userID).Find(&r)

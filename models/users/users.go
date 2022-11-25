@@ -199,7 +199,7 @@ func GetUser(email string) (*User, error) {
 		return nil, ErrEmptyEmail
 	}
 	u := User{}
-	resp := db.PublicDB.Model(&u).Where("email=?", email).Find(&u)
+	resp := db.PublicDB.Model(&u).Where("email=?", email).First(&u)
 	if resp.Error != nil {
 		return nil, resp.Error
 	}
@@ -279,6 +279,15 @@ func GetRegistrationForUser(id uint) (*Registration, error) {
 		return nil, resp.Error
 	}
 	return &r, nil
+}
+
+func GetUnconfirmedRegistrations(days_passed uint) ([]*Registration, error) {
+	registrations := []*Registration{}
+	resp := db.PrivateDB.Where("`confirmed`=0 and `registration_date` < NOW() - INTERVAL ? DAY", days_passed).Find(&registrations)
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+	return registrations, nil
 }
 
 func init() {

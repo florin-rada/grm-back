@@ -11,9 +11,11 @@ import (
 var token = "glpat-SQb5HA2ZVZNC2AUuuyAy"
 var client *gl.Client
 
+var ErrInvalidGitClient = errors.New("invalid gitlab client")
+
 func GetAllRunners(client *gl.Client, page int, perPage int) ([]*gl.Runner, *gl.Response, error) {
 	if client == nil {
-		return nil, nil, errors.New("Error, invalid gitlab client")
+		return nil, nil, ErrInvalidGitClient
 	}
 	lro := gl.ListRunnersOptions{}
 	if page > 0 {
@@ -34,7 +36,7 @@ func GetAllRunners(client *gl.Client, page int, perPage int) ([]*gl.Runner, *gl.
 
 func GetRunnerDetails(client *gl.Client, runnerID int) (*gl.RunnerDetails, error) {
 	if client == nil {
-		return nil, errors.New("Error, invalid gitlab client")
+		return nil, ErrInvalidGitClient
 	}
 	rd, _, err := client.Runners.GetRunnerDetails(runnerID)
 	if err != nil {
@@ -56,7 +58,7 @@ func GetRunnerJobs(client *gl.Client, runnerID int, status string, page int, per
 		lrjo.ListOptions.PerPage = perPage
 	}
 
-	jobs, resp, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{})
+	jobs, resp, err := client.Runners.ListRunnerJobs(runnerID, &lrjo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -66,7 +68,7 @@ func GetRunnerJobs(client *gl.Client, runnerID int, status string, page int, per
 // GetJobsSince returns a list of all the jobs starting with startDate and to the present day
 func GetJobsSince(client *gl.Client, runnerID int, startDate *time.Time) ([]*gl.Job, error) {
 	if client == nil {
-		return nil, errors.New("Error, invalid gitlab client")
+		return nil, ErrInvalidGitClient
 	}
 	jobs := []*gl.Job{}
 	page := 0
@@ -94,16 +96,16 @@ func GetJobsSince(client *gl.Client, runnerID int, startDate *time.Time) ([]*gl.
 
 func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDate *time.Time) ([]*gl.Job, error) {
 	if client == nil {
-		return nil, errors.New("Error, invalid gitlab client")
+		return nil, ErrInvalidGitClient
 	}
 	jobs := []*gl.Job{}
 
 	if startDate == nil || endDate == nil {
-		return []*gl.Job{}, errors.New("Error, invalid start date or end date")
+		return []*gl.Job{}, errors.New("invalid start date or end date")
 	}
 
 	if endDate.Before(*startDate) {
-		return []*gl.Job{}, errors.New("Error, start date is before end date")
+		return []*gl.Job{}, errors.New("start date is before end date")
 	}
 	//foundEveryting := false
 	//numDaysSinceEndDate := int(time.Now().Sub(*endDate) / (24 * time.Hour))
@@ -167,19 +169,22 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 	}
 
 	return jobs, nil
-
 }
 
-func GetClient() *gl.Client {
-	var err error
-	if client == nil {
-		client, err = gl.NewClient(token, gl.WithBaseURL("https://gitlab.com/api/v4"))
-		if err != nil {
-			panic(fmt.Sprintf("Error creating gitlab client: %s", err.Error()))
-		}
-		return client
+func GetClient(baseUrl string, token string) (*gl.Client, error) {
+	client, err := gl.NewClient(token, gl.WithBaseURL(baseUrl))
+	if err != nil {
+		return nil, err
 	}
-	return client
+	return client, nil
+}
+
+func UpdateRunner(client *gl.Client, id uint, runner *gl.UpdateRunnerDetailsOptions) error {
+	if client == nil {
+		return ErrInvalidGitClient
+	}
+	_, _, err := client.Runners.UpdateRunnerDetails(id, runner)
+	return err
 }
 
 func init() {
