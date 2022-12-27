@@ -32,7 +32,7 @@ type PrivateModel struct {
 
 type User struct {
 	gorm.Model
-	Email string `json:"email" gorm:"uniqueIndex:unique_email"`
+	Email string `json:"email" gorm:"email,uniqueIndex:unique_email"`
 }
 
 type UserCredential struct {
