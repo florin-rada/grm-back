@@ -179,6 +179,49 @@ func GetClient(baseUrl string, token string) (*gl.Client, error) {
 	return client, nil
 }
 
+func GetAverageDaysPerPage(client *gl.Client, runnerID int) (float64, error) {
+	var finished bool
+	var count int = 1
+	var pages float64
+	jobs := []*gl.Job{}
+	for finished && count < 15 {
+		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
+			ListOptions: gl.ListOptions{
+				Page:    count,
+				PerPage: 100,
+			},
+		})
+		if err != nil {
+			return 0, err
+		}
+		jobs = append(jobs, tmpJobs...)
+		today := time.Now().Truncate(24 * time.Hour)
+		lastJob := tmpJobs[len(tmpJobs)-1]
+		lastJobCreatedAt := lastJob.CreatedAt.Truncate(24 * time.Hour)
+		timeDiff := today.Sub(lastJobCreatedAt).Hours()
+
+		if timeDiff > 48 { // if difference is greater than 48 hours, we loop backwards on the received jobs until we find this
+
+		} else if timeDiff == 48 { // if we have 48 hours, we go back until we get 24 hours difference and than start counting untill we reach today
+			var numJobs int
+			for i := len(jobs) - 1; i >= 0; i-- {
+				tmpTimeDiff := today.Sub(jobs[i].CreatedAt.Truncate(24 * time.Hour)).Hours()
+				if tmpTimeDiff < 24 && tmpTimeDiff > 0 {
+					numJobs++
+				}
+				if tmpTimeDiff <= 0 {
+					if count == 1 {
+
+					}
+				}
+			}
+		} else if timeDiff < 48 { // we continue to load another page
+			continue
+		}
+
+	}
+}
+
 func UpdateRunner(client *gl.Client, id uint, runner *gl.UpdateRunnerDetailsOptions) error {
 	if client == nil {
 		return ErrInvalidGitClient
