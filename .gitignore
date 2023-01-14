@@ -1,3 +1,5 @@
 go.mod.back
 go.sum.back
 main.exe
+grm-back.code-workspace
+go.sum
