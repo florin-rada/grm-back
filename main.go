@@ -5,6 +5,11 @@ import (
 	"back/controllers/mock_data"
 	"back/controllers/users"
 	"back/database"
+	"time"
+
+	"github.com/gin-contrib/cors"
+
+	//"github.com/gin-contrib/sessions/cookie"
 
 	"github.com/gin-gonic/gin"
 )
@@ -44,15 +49,38 @@ import (
 func main() {
 
 	r := gin.Default()
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000"},
+		AllowCredentials: true,
+		//AllowHeaders:     []string{"Origin"},
+		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
+		MaxAge:       12 * time.Hour,
+	}))
 	authorized := r.Group("authorized")
+	/* store := gormsessions.NewStore(database.PrivateDB, true, []byte(os.Getenv("SESSION_SECRET")))
+	store.Options(sessions.Options{
+		MaxAge:   60 * 60 * 24,
+		Secure:   false,
+		HttpOnly: false,
+	}) */
+	//r.Use(sessions.Sessions("GILMO_SESSION", store))
+	//authorized.Use(sessions.Sessions("GILMO_SESSION", store))
+	authorized.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000"},
+		AllowCredentials: true,
+		//AllowHeaders:     []string{"Origin"},
+		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
+		MaxAge:       12 * time.Hour,
+	}))
 	authorized.Use(login.CheckLoginMidleware())
 	{
-		authorized.GET("get", func(c *gin.Context) {
+		authorized.GET("/get", func(c *gin.Context) {
 			c.JSON(200, gin.H{
 				"OK": "OK",
 			})
 		})
 	}
+	r.POST("/login", login.ValidateLogin)
 	r.POST("/register", users.Register)
 	r.GET("/confirm_registration", users.ConfirmRegistration)
 

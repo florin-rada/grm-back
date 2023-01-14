@@ -182,7 +182,7 @@ func GetClient(baseUrl string, token string) (*gl.Client, error) {
 func GetAverageDaysPerPage(client *gl.Client, runnerID int) (float64, error) {
 	var finished bool
 	var count int = 1
-	var pages float64
+	//var pages float64
 	jobs := []*gl.Job{}
 	for finished && count < 15 {
 		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{

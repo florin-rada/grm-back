@@ -1,5 +1,11 @@
 package login
 
+import (
+	"back/models/keycloak"
+
+	"github.com/Nerzal/gocloak/v12"
+)
+
 /* type AuthData struct {
 	Username string `header:"username"`
 	Password string `header:"password"`
@@ -13,13 +19,12 @@ func ValidateToken(token string) (bool, error) {
 	return true, nil
 }
 
-func ValidateLogin(userEmail string, pass string) (bool, error) {
-	if userEmail == "user" && pass == "pass" {
-		return true, nil
+func ValidateLogin(userEmail string, pass string) (*gocloak.JWT, error) {
+	jwt, err := keycloak.LoginUser(userEmail, pass)
+	if err != nil {
+		return nil, err
 	}
-
-	//_, _ := users.ValidateUserPassword(userEmail, pass)
-	return true, nil
+	return jwt, nil
 }
 
 func init() {
