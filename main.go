@@ -75,8 +75,23 @@ func main() {
 	authorized.Use(login.CheckLoginMidleware())
 	{
 		authorized.GET("/get", func(c *gin.Context) {
+			userToken := c.GetString("user_git_token")
+			if userToken == "" {
+				c.JSON(500, gin.H{
+					"error": "No git token found in context",
+				})
+				return
+			}
+			userInfo, exists := c.Get("user_info")
+			if !exists {
+				c.JSON(500, gin.H{
+					"error": "user_info not found",
+				})
+				return
+			}
 			c.JSON(200, gin.H{
-				"OK": "OK",
+				"OK":       userToken,
+				"UserInfo": userInfo,
 			})
 		})
 	}

@@ -36,6 +36,15 @@ func CheckLoginMidleware() gin.HandlerFunc {
 			})
 			return
 		}
+		ui, err := keycloak.GetUserInfo(tokenStruct.AccessToken)
+		if err != nil {
+			next.JSON(http.StatusUnauthorized, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		next.Set("user_git_token", "asdg12398as971982jckalsuyu182")
+		next.Set("user_info", ui)
 		next.Next()
 	}
 }

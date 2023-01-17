@@ -37,6 +37,14 @@ func ValidateToken(accessToken string) error {
 	return nil
 }
 
+func GetUserInfo(accessToken string) (*gocloak.UserInfo, error) {
+	ui, err := kc.client.GetUserInfo(context.Background(), accessToken, kc.realm)
+	if err != nil {
+		return nil, err
+	}
+	return ui, nil
+}
+
 func init() {
 	kc = keycloak{
 		client:       gocloak.NewClient(os.Getenv("KEYCLOAK_HOST")),
