@@ -2,7 +2,9 @@ package users
 
 import (
 	db "back/database"
+	"back/models/keycloak"
 	"errors"
+	"fmt"
 	"net/mail"
 	re "regexp"
 	"time"
@@ -128,7 +130,12 @@ func CreateUser(email, password string) (*User, error) {
 	u := User{
 		Email: email,
 	}
-	hash, err := EncryptPassword(password)
+	kcUserId, err := keycloak.CreateUser(email, password)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("New user id for : %s : %s", email, *kcUserId)
+	/* hash, err := EncryptPassword(password)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +166,7 @@ func CreateUser(email, password string) (*User, error) {
 	})
 	if err != nil {
 		return nil, err
-	}
+	} */
 	return &u, nil
 }
 
