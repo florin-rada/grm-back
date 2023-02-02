@@ -220,6 +220,7 @@ func GetAverageDaysPerPage(client *gl.Client, runnerID int) (float64, error) {
 		}
 
 	}
+	return 0, nil
 }
 
 func UpdateRunner(client *gl.Client, id uint, runner *gl.UpdateRunnerDetailsOptions) error {

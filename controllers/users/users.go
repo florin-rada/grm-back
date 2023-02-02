@@ -1,10 +1,7 @@
 package users
 
 import (
-	db "back/database"
-	"back/models/profile"
 	"back/models/users"
-	"errors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,22 +31,16 @@ func Register(ctx *gin.Context) {
 		})
 		return
 	}
-	p, err := profile.CreateProfile(u.ID, args.FirstName, args.LastName)
-	if err != nil {
-		ctx.JSON(500, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
+
 	ctx.JSON(200, gin.H{
-		"error":   "",
-		"user":    u,
-		"profile": p,
+		"error": "",
+		"user":  u,
 	})
 
 }
 
-func ConfirmRegistration(ctx *gin.Context) {
+// not needed anymore, email confirmation handled by keycloak
+/* func ConfirmRegistration(ctx *gin.Context) {
 	token := ctx.Query("token")
 	if token == "" {
 		ctx.JSON(400, gin.H{
@@ -68,4 +59,4 @@ func ConfirmRegistration(ctx *gin.Context) {
 		"error": "",
 	})
 
-}
+} */

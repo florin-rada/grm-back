@@ -48,7 +48,7 @@ func GetUserInfo(accessToken string) (*gocloak.UserInfo, error) {
 }
 
 func CreateUser(email string, password string) (*string, error) {
-	token, err := GetAdminToken()
+	token, err := getAdminToken()
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func CreateUser(email string, password string) (*string, error) {
 	return &userID, nil
 }
 
-func GetAdminToken() (*string, error) {
+func getAdminToken() (*string, error) {
 	jwt, err := kc.client.GetToken(context.Background(), "master", gocloak.TokenOptions{
 		ClientID:     gocloak.StringP("admin-cli"),
 		GrantType:    gocloak.StringP("client_credentials"),
@@ -91,6 +91,18 @@ func GetAdminToken() (*string, error) {
 		return nil, err
 	}
 	return &jwt.AccessToken, nil
+}
+
+func ChangeUserPassword(userID string, password string) error {
+	jwt, err := getAdminToken()
+	if err != nil {
+		return err
+	}
+	err = kc.client.SetPassword(context.Background(), *jwt, userID, kc.realm, password, false)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func init() {

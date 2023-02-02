@@ -43,8 +43,11 @@ func CheckLoginMidleware() gin.HandlerFunc {
 			})
 			return
 		}
-		next.Set("user_git_token", "asdg12398as971982jckalsuyu182")
-		next.Set("user_info", ui)
+		//next.Set("user_git_token", "asdg12398as971982jckalsuyu182")
+		//next.Set("user_info", ui)
+		next.Set("user_id", ui.Sub)
+		next.Set("username", ui.PreferredUsername)
+		next.Set("email", ui.Email)
 		next.Next()
 	}
 }

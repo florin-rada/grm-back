@@ -8,7 +8,7 @@ import (
 )
 
 type Profile struct {
-	IDUser           uint   `json:"id_user" gorm:"id_user,unique"`
+	IDUser           string `json:"id_user" gorm:"id_user,unique"`
 	FirstName        string `json:"first_name" gorm:"first_name"`
 	LastName         string `json:"last_name" gorm:"last_name"`
 	PreferedLanguage string `json:"prefered_language" gorm:"prefered_language"`
@@ -16,14 +16,14 @@ type Profile struct {
 }
 
 type Billing struct {
-	IDUser        uint       `json:"id_user" gorm:"id_user,unique"`
+	IDUser        string     `json:"id_user" gorm:"id_user,unique"`
 	IDPackageType uint       `json:"id_package_type" gorm:"id_package_type"`
 	StartDate     *time.Time `json:"start_date" gorm:"start_date"`
 	EndDate       *time.Time `json:"end_date" gorm:"end_date"`
 }
 
-func CreateProfile(idUser uint, firstName string, lastName string) (*Profile, error) {
-	if idUser <= 0 {
+func CreateProfile(idUser string, firstName string, lastName string) (*Profile, error) {
+	if idUser == "" {
 		return nil, errors.New("invalid user id")
 	}
 	if len(firstName) < 3 {

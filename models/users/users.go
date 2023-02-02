@@ -2,13 +2,16 @@ package users
 
 import (
 	db "back/database"
+	"back/models/gitlab"
 	"back/models/keycloak"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/mail"
 	re "regexp"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -77,9 +80,10 @@ type PasswordReset struct {
 	Confirmed   bool       `json:"confirmed" gorm:"confirmed"`
 }
 
-type GitlabToken struct {
-	IDUser uint   `json:"id_user" gorm:"id_user;unique"`
-	Token  string `json:"token" gorm:"token"`
+type GitlabDetails struct {
+	IDUser      string `json:"id_user" gorm:"id_user;unique"`
+	Token       string `json:"token" gorm:"token"`
+	InstanceURL string `json:"instance_url" gorm:"instance_url"`
 }
 
 func ValidateUserPassword(email, password string) (bool, error) {
@@ -110,31 +114,40 @@ func ValidateUserPassword(email, password string) (bool, error) {
 
 // CreateUser creates the new user and starts the registration confirmation process
 // It also validates that the email is valid
-func CreateUser(email, password string) (*User, error) {
+func CreateUser(email, password string) (string, error) {
 	if email == "" {
-		return nil, errors.New("invalid email")
+		return "", errors.New("invalid email")
 	}
 	_, err := mail.ParseAddress(email)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	isGood, err := CheckPasswordStrength(password)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if !isGood {
-		return nil, ErrPasswordMissingElements
+		return "", ErrPasswordMissingElements
 	}
-
-	u := User{
-		Email: email,
-	}
+	// we create the keycloak user
 	kcUserId, err := keycloak.CreateUser(email, password)
 	if err != nil {
-		return nil, err
+		return "", err
+	}
+
+	// create the gitlab details instance, will hold the user's api endpoint and gitlab token
+	gitDetails := GitlabDetails{
+		*kcUserId,
+		"",
+		"",
+	}
+	resp := db.PrivateDB.Save(&gitDetails)
+	if resp.Error != nil {
+		return "", err
 	}
 	fmt.Printf("New user id for : %s : %s", email, *kcUserId)
+	//p, err := profile.CreateProfile(*kcUserId, )
 	/* hash, err := EncryptPassword(password)
 	if err != nil {
 		return nil, err
@@ -167,7 +180,39 @@ func CreateUser(email, password string) (*User, error) {
 	if err != nil {
 		return nil, err
 	} */
-	return &u, nil
+	return *kcUserId, nil
+}
+
+func GetUserGitDetails(idUser string) (*GitlabDetails, error) {
+	glt := GitlabDetails{}
+	resp := db.PrivateDB.Model(GitlabDetails{}).Find("id_user=?", idUser).First(&glt)
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+	return &glt, nil
+}
+
+func SetGitClientMiddleware() gin.HandlerFunc {
+	return func(next *gin.Context) {
+		userID := next.GetString("user_id")
+		if userID == "" {
+			next.Next()
+			return
+		}
+		gitDetails, err := GetUserGitDetails(userID)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			next.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		clt, err := gitlab.GetClient(gitDetails.InstanceURL, gitDetails.Token)
+		if err != nil {
+			next.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		next.Set("git_client", clt)
+		next.Next()
+	}
 }
 
 func CheckPasswordStrength(password string) (bool, error) {
@@ -310,7 +355,7 @@ func init() {
 	if err != nil {
 		panic("Error migrating user_tokens table")
 	}
-	err = db.PrivateDB.AutoMigrate(&GitlabToken{})
+	err = db.PrivateDB.AutoMigrate(&GitlabDetails{})
 	if err != nil {
 		panic("Error migrating table gitlab_tokens table")
 	}
