@@ -3,8 +3,10 @@ package main
 import (
 	"back/controllers/login"
 	"back/controllers/mock_data"
+	"back/controllers/users"
 	"back/database"
-	"back/models/users"
+	glm "back/models/gitlab"
+	um "back/models/users"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -57,6 +59,8 @@ func main() {
 		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
 		MaxAge:       12 * time.Hour,
 	}))
+	r.POST("/login", login.ValidateLogin)
+	r.POST("/register", users.Register)
 	authorized := r.Group("authorized")
 	/* store := gormsessions.NewStore(database.PrivateDB, true, []byte(os.Getenv("SESSION_SECRET")))
 	store.Options(sessions.Options{
@@ -74,23 +78,38 @@ func main() {
 		MaxAge:       12 * time.Hour,
 	}))
 	authorized.Use(login.CheckLoginMidleware())
+	authorized.Use(um.SetGitClientMiddleware())
 	{
-		authorized.Use(users.SetGitClientMiddleware())
 		authorized.GET("/get", func(c *gin.Context) {
-			userToken := c.GetString("user_git_token")
+			/* userToken := c.GetString("user_git_token")
 			if userToken == "" {
 				c.JSON(500, gin.H{
 					"error": "No git token found in context",
 				})
 				return
-			}
-			userInfo, exists := c.Get("user_info")
+			} */
+			userID, exists := c.Get("user_id")
 			if !exists {
 				c.JSON(500, gin.H{
 					"error": "user_info not found",
 				})
 				return
 			}
+			userEmail, exists := c.Get("email")
+			if !exists {
+				c.JSON(500, gin.H{
+					"error": "user email not found",
+				})
+				return
+			}
+			username, exists := c.Get("username")
+			if !exists {
+				c.JSON(500, gin.H{
+					"error": "username not found",
+				})
+				return
+			}
+
 			gitClientI, exists := c.Get("git_client")
 			if !exists {
 				c.JSON(500, gin.H{
@@ -99,15 +118,26 @@ func main() {
 				return
 			}
 			gitClient := gitClientI.(*gitlab.Client)
+
+			jobs, _, err := glm.GetAllRunners(gitClient, 1, 20)
+			if err != nil {
+				c.JSON(500, gin.H{
+					"error": "error getting users runners",
+				})
+				return
+			}
+
 			c.JSON(200, gin.H{
-				"OK":            userToken,
-				"UserInfo":      userInfo,
+				//"OK":            userToken,
+				"userID":        userID,
 				"GitlabDetails": gitClient,
+				"Email":         userEmail,
+				"username":      username,
+				"jobs":          jobs,
 			})
+
 		})
 	}
-	r.POST("/login", login.ValidateLogin)
-	//r.POST("/register", users.Register)
 	//r.GET("/confirm_registration", users.ConfirmRegistration)
 	/* r.GET("/test_email_send", func(ctx *gin.Context) {
 		from := "florin.rada87@yahoo.com"

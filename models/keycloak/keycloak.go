@@ -47,7 +47,7 @@ func GetUserInfo(accessToken string) (*gocloak.UserInfo, error) {
 	return ui, nil
 }
 
-func CreateUser(email string, password string) (*string, error) {
+func CreateUser(email string, password string, firstName string, lastName string) (*string, error) {
 	token, err := getAdminToken()
 	if err != nil {
 		return nil, err
@@ -56,8 +56,10 @@ func CreateUser(email string, password string) (*string, error) {
 	var isTemporary bool = false
 	//var isEmailVerified bool = false
 	userID, err := kc.client.CreateUser(context.Background(), *token, kc.realm, gocloak.User{
-		Username: &email,
-		Email:    &email,
+		Username:  &email,
+		Email:     &email,
+		FirstName: &firstName,
+		LastName:  &lastName,
 		//EmailVerified: &isEmailVerified,
 		Credentials: &[]gocloak.CredentialRepresentation{
 			{

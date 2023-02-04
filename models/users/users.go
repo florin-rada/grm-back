@@ -114,7 +114,7 @@ func ValidateUserPassword(email, password string) (bool, error) {
 
 // CreateUser creates the new user and starts the registration confirmation process
 // It also validates that the email is valid
-func CreateUser(email, password string) (string, error) {
+func CreateUser(email, password string, firstName string, lastName string) (string, error) {
 	if email == "" {
 		return "", errors.New("invalid email")
 	}
@@ -131,7 +131,7 @@ func CreateUser(email, password string) (string, error) {
 		return "", ErrPasswordMissingElements
 	}
 	// we create the keycloak user
-	kcUserId, err := keycloak.CreateUser(email, password)
+	kcUserId, err := keycloak.CreateUser(email, password, firstName, lastName)
 	if err != nil {
 		return "", err
 	}
@@ -185,7 +185,7 @@ func CreateUser(email, password string) (string, error) {
 
 func GetUserGitDetails(idUser string) (*GitlabDetails, error) {
 	glt := GitlabDetails{}
-	resp := db.PrivateDB.Model(GitlabDetails{}).Find("id_user=?", idUser).First(&glt)
+	resp := db.PrivateDB.Model(GitlabDetails{}).Where("id_user=?", idUser).First(&glt)
 	if resp.Error != nil {
 		return nil, resp.Error
 	}
@@ -194,14 +194,17 @@ func GetUserGitDetails(idUser string) (*GitlabDetails, error) {
 
 func SetGitClientMiddleware() gin.HandlerFunc {
 	return func(next *gin.Context) {
-		userID := next.GetString("user_id")
-		if userID == "" {
+		userID, exists := next.Get("user_id")
+		if !exists {
 			next.Next()
 			return
 		}
-		gitDetails, err := GetUserGitDetails(userID)
+		gitDetails, err := GetUserGitDetails(userID.(string))
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			next.AbortWithError(http.StatusInternalServerError, err)
+			return
+		} else if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+			next.Next()
 			return
 		}
 		clt, err := gitlab.GetClient(gitDetails.InstanceURL, gitDetails.Token)

@@ -24,7 +24,7 @@ func Register(ctx *gin.Context) {
 		})
 	}
 
-	u, err := users.CreateUser(args.Email, args.Password)
+	u, err := users.CreateUser(args.Email, args.Password, args.FirstName, args.LastName)
 	if err != nil {
 		ctx.JSON(500, gin.H{
 			"error": err.Error(),
