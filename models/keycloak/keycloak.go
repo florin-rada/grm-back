@@ -28,6 +28,11 @@ func LoginUser(username string, password string) (*gocloak.JWT, error) {
 	return jwt, nil
 }
 
+func RefreshToken(accessToken string) (*gocloak.JWT, error) {
+	jwt, err := kc.client.RefreshToken(context.Background(), accessToken, kc.clientID, kc.clientSecret, kc.realm)
+	return jwt, err
+}
+
 func ValidateToken(accessToken string) error {
 	result, err := kc.client.RetrospectToken(context.Background(), accessToken, kc.clientID, kc.clientSecret, kc.realm)
 	if err != nil {

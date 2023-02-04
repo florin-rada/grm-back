@@ -1,10 +1,16 @@
 package users
 
 import (
+	"back/models/keycloak"
 	"back/models/users"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+type tokenStruct struct {
+	AccessToken string `json:"access_token"`
+}
 
 func Register(ctx *gin.Context) {
 	args := struct {
@@ -37,6 +43,49 @@ func Register(ctx *gin.Context) {
 		"user":  u,
 	})
 
+}
+
+func ValidateToken(ctx *gin.Context) {
+	ts := tokenStruct{}
+	err := ctx.ShouldBindHeader(&ts)
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"error": "no token",
+		})
+		return
+	}
+	err = keycloak.ValidateToken(ts.AccessToken)
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"error": "invalid token",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"error": "",
+	})
+}
+
+func RefreshToken(ctx *gin.Context) {
+	ts := tokenStruct{}
+	err := ctx.ShouldBindHeader(&ts)
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"error": "no token",
+		})
+		return
+	}
+	jwt, err := keycloak.RefreshToken(ts.AccessToken)
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"error": "invalid token",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"error":        "",
+		"access_token": jwt.AccessToken,
+	})
 }
 
 // not needed anymore, email confirmation handled by keycloak

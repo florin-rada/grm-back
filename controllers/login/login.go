@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,7 +21,16 @@ type AccessToken struct {
 // This checks the token received from the app
 func CheckLoginMidleware() gin.HandlerFunc {
 	return func(next *gin.Context) {
-		tokenStruct := &AccessToken{}
+		sess := sessions.Default(next)
+		accessTokenI := sess.Get("access_token")
+		if accessTokenI == nil {
+			next.JSON(http.StatusUnauthorized, gin.H{
+				"error": "No token available",
+			})
+			return
+		}
+		accessToken := accessTokenI.(string)
+		/* tokenStruct := &AccessToken{}
 		err := next.ShouldBindHeader(&tokenStruct)
 		if err != nil {
 			next.JSON(500, gin.H{
@@ -28,15 +38,15 @@ func CheckLoginMidleware() gin.HandlerFunc {
 			})
 			next.Abort()
 			return
-		}
-		err = keycloak.ValidateToken(tokenStruct.AccessToken)
+		} */
+		err := keycloak.ValidateToken(accessToken)
 		if err != nil {
 			next.JSON(http.StatusUnauthorized, gin.H{
 				"error": err.Error(),
 			})
 			return
 		}
-		ui, err := keycloak.GetUserInfo(tokenStruct.AccessToken)
+		ui, err := keycloak.GetUserInfo(accessToken)
 		if err != nil {
 			next.JSON(http.StatusUnauthorized, gin.H{
 				"error": err.Error(),
@@ -72,6 +82,10 @@ func ValidateLogin(ctx *gin.Context) {
 		return
 	}
 	fmt.Printf("We have valid credentials and received access token: %+v", &accessToken)
+	session := sessions.Default(ctx)
+	session.Set("access_token", accessToken.AccessToken)
+	session.Set("refresh_token", accessToken.RefreshToken)
+	session.Save()
 	ctx.JSON(http.StatusOK, gin.H{
 		"error":         "",
 		"access_token":  accessToken.AccessToken,

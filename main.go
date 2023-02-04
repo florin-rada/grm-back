@@ -7,13 +7,15 @@ import (
 	"back/database"
 	glm "back/models/gitlab"
 	um "back/models/users"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
 	"github.com/xanzy/go-gitlab"
 
 	//"github.com/gin-contrib/sessions/cookie"
-
+	gormsessions "github.com/gin-contrib/sessions/gorm"
 	"github.com/gin-gonic/gin"
 )
 
@@ -52,7 +54,23 @@ import (
 func main() {
 
 	r := gin.Default()
+	store := gormsessions.NewStore(database.PrivateDB, true, []byte(os.Getenv("SESSION_SECRET")))
+	store.Options(sessions.Options{
+		MaxAge:   60 * 60 * 24,
+		Secure:   false,
+		HttpOnly: true,
+	})
+	r.Use(sessions.Sessions("GILMO_SESSION", store))
+	authorized := r.Group("authorized")
+	authorized.Use(sessions.Sessions("GILMO_SESSION", store))
 	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000"},
+		AllowCredentials: true,
+		//AllowHeaders:     []string{"Origin"},
+		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
+		MaxAge:       12 * time.Hour,
+	}))
+	authorized.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000"},
 		AllowCredentials: true,
 		//AllowHeaders:     []string{"Origin"},
@@ -61,22 +79,8 @@ func main() {
 	}))
 	r.POST("/login", login.ValidateLogin)
 	r.POST("/register", users.Register)
-	authorized := r.Group("authorized")
-	/* store := gormsessions.NewStore(database.PrivateDB, true, []byte(os.Getenv("SESSION_SECRET")))
-	store.Options(sessions.Options{
-		MaxAge:   60 * 60 * 24,
-		Secure:   false,
-		HttpOnly: false,
-	}) */
-	//r.Use(sessions.Sessions("GILMO_SESSION", store))
-	//authorized.Use(sessions.Sessions("GILMO_SESSION", store))
-	authorized.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000"},
-		AllowCredentials: true,
-		//AllowHeaders:     []string{"Origin"},
-		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
-		MaxAge:       12 * time.Hour,
-	}))
+	r.GET("/validate_token", users.ValidateToken)
+	r.GET("/refresh_token", users.RefreshToken)
 	authorized.Use(login.CheckLoginMidleware())
 	authorized.Use(um.SetGitClientMiddleware())
 	{
@@ -87,7 +91,7 @@ func main() {
 					"error": "No git token found in context",
 				})
 				return
-			} */
+				} */
 			userID, exists := c.Get("user_id")
 			if !exists {
 				c.JSON(500, gin.H{
