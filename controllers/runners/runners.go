@@ -68,7 +68,7 @@ func ListUserRunners(ctx *gin.Context) {
 }
 
 func AddRunnerForUser(ctx *gin.Context) {
-	/* userIDI, exists := ctx.Get("user_id")
+	userIDI, exists := ctx.Get("user_id")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error":    "Not logged in",
@@ -76,5 +76,37 @@ func AddRunnerForUser(ctx *gin.Context) {
 		})
 		return
 	}
-	userID := userIDI.(string) */
+	userID := userIDI.(string)
+	args := struct {
+		IdRunner int
+	}{}
+	err := ctx.BindJSON(&args)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	gitClientI, exists := ctx.Get("git_client")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{
+			"error":    "No git token",
+			"response": "",
+		})
+		return
+	}
+	gitClient := gitClientI.(*gitlab.Client)
+	err = runners.AddRunnerForUser(gitClient, userID, args.IdRunner)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"error":    "",
+		"response": "",
+	})
+
 }

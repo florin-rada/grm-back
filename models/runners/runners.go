@@ -80,6 +80,32 @@ func GetUserRunners(userID string) ([]Runner, error) {
 	return r, nil
 }
 
+func AddRunnerForUser(client *gl.Client, userID string, runnerId int) error {
+	if client == nil {
+		return errors.New("No client")
+	}
+	if userID == "" {
+		return errors.New("No user id")
+	}
+	rd, _, err := client.Runners.GetRunnerDetails(runnerId)
+	if err != nil {
+		return err
+	}
+	if rd == nil {
+		return errors.New("No details returned")
+	}
+	r, err := TranslateGLRunnerDetailsToRunner(rd)
+	if err != nil {
+		return err
+	}
+	r.InternalUserId = userID
+	resp := db.PublicDB.Save(r)
+	if resp.Error != nil {
+		return resp.Error
+	}
+	return nil
+}
+
 func init() {
 	resp := db.PublicDB.AutoMigrate(&Runner{})
 	if resp != nil {
