@@ -3,6 +3,7 @@ package main
 import (
 	"back/controllers/login"
 	"back/controllers/mock_data"
+	"back/controllers/runners"
 	"back/controllers/users"
 	"back/database"
 	glm "back/models/gitlab"
@@ -84,6 +85,7 @@ func main() {
 	authorized.Use(login.CheckLoginMidleware())
 	authorized.Use(um.SetGitClientMiddleware())
 	{
+		authorized.GET("/git_runners", runners.ListUserRunnersFromGit)
 		authorized.GET("/get", func(c *gin.Context) {
 			/* userToken := c.GetString("user_git_token")
 			if userToken == "" {
@@ -192,14 +194,14 @@ func main() {
 	r.StaticFile("/asset-manifest.json", "../../front/build/asset-manifest.json")
 	r.StaticFile("/manifest.json", "../../front/build/manifest.json")
 	//fmt.Printf("hello, world\n")
-	res := database.PublicDB.Raw("SHOW TABLES")
+	/* res := database.PublicDB.Raw("SHOW TABLES")
 	if res.Error != nil {
 		panic(res.Error.Error())
 	}
 	res = database.PrivateDB.Raw("SHOW TABLES")
 	if res.Error != nil {
 		panic(res.Error.Error())
-	}
+	} */
 
 	r.Run(":8080")
 }

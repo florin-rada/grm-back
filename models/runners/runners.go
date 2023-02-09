@@ -4,21 +4,22 @@ import (
 	db "back/database"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	gl "github.com/xanzy/go-gitlab"
 )
 
 type Runner struct {
-	InternalUserId int       `json:"internal_user_id,omitempty" gorm:"internal_user_id"`
+	InternalUserId string    `json:"internal_user_id,omitempty" gorm:"internal_user_id"`
 	ID             int       `json:"id" gorm:"id,primaryKey"`
 	Description    string    `json:"description" gorm:"description"`
 	Active         bool      `json:"active" gorm:"active"`
 	Paused         bool      `json:"paused" gorm:"paused"`
 	Online         bool      `json:"online" gorm:"online"`
 	Status         string    `json:"status" gorm:"status"`
-	Type           string    `json:"type" gorm:"type"`
-	TagList        []string  `json:"tag_list" gorm:"tag_list"`
+	RunnerType     string    `json:"runner_type" gorm:"runner_type"`
+	TagList        string    `json:"tag_list" gorm:"tag_list"`
 	RunUntagged    bool      `json:"run_untagged" gorm:"run_untagged"`
 	IsShared       bool      `json:"is_shared" gorm:"is_shared"`
 	Platform       string    `json:"platform" gorm:"platform"`
@@ -39,8 +40,8 @@ func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (*Runner, error) {
 		Paused:         rd.Paused,
 		Online:         rd.Online,
 		Status:         rd.Status,
-		Type:           rd.RunnerType,
-		TagList:        rd.TagList,
+		RunnerType:     rd.RunnerType,
+		TagList:        strings.Join(rd.TagList, ","),
 		RunUntagged:    rd.RunUntagged,
 		IsShared:       rd.IsShared,
 		Platform:       rd.Platform,
@@ -70,7 +71,7 @@ func UpdateRunner(r Runner) error {
 	return nil
 }
 
-func GetUserRunners(userID uint) ([]Runner, error) {
+func GetUserRunners(userID string) ([]Runner, error) {
 	r := []Runner{}
 	resp := db.PublicDB.Where("internal_user_id=?", userID).Find(&r)
 	if resp.Error != nil {
@@ -82,6 +83,6 @@ func GetUserRunners(userID uint) ([]Runner, error) {
 func init() {
 	resp := db.PublicDB.AutoMigrate(&Runner{})
 	if resp != nil {
-		panic(fmt.Sprintf("Error automigrating pipelines table: %s", resp.Error()))
+		panic(fmt.Sprintf("Error automigrating runners table: %s", resp.Error()))
 	}
 }

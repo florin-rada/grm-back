@@ -106,8 +106,8 @@ func init() {
 			continue
 		}
 		cols := strings.Split(row, ",")
-		fmt.Printf("cols: %+v", cols)
-		fmt.Printf(" id: %s\n", cols[0])
+		//fmt.Printf("cols: %+v", cols)
+		//fmt.Printf(" id: %s\n", cols[0])
 		id, err := strconv.ParseInt(cols[0], 10, 0)
 		if err != nil {
 			panic(fmt.Sprintf("Error parsing id: %s", err.Error()))

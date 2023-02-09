@@ -237,5 +237,5 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("Error creating gitlab client: %s", err.Error()))
 	}
-	fmt.Printf("We have client: %+v", client)
+	//fmt.Printf("We have client: %+v", client)
 }

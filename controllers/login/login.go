@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
+	//_ "github.com/gin-contrib/sessions/gorm"
 	"github.com/gin-gonic/gin"
 )
 
