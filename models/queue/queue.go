@@ -4,16 +4,22 @@ import (
 	"runtime"
 )
 
-type QueueItem interface {
-	ExecuteTask()
+type QueueItem func(...interface{})
+
+// This calls the closure we received as argument when calling AddToQueu
+func (qi QueueItem) ExecuteTask() {
+	qi()
 }
 
 var queue chan QueueItem
 
+// Receives a closure with signature func() and adds it to the queue
 func AddToQueue(item QueueItem) {
 	queue <- item
 }
 
+// This is our executor, it loops and waits for tasks to do
+// Runs in a spearate goroutine
 func executor() {
 	for {
 		qi := <-queue
@@ -23,7 +29,7 @@ func executor() {
 }
 
 func init() {
-	queue = make(chan QueueItem, runtime.NumCPU())
+	queue = make(chan QueueItem, runtime.NumCPU()*100)
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go executor()
 	}

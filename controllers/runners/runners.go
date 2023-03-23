@@ -1,8 +1,10 @@
 package runners
 
 import (
+	consterrors "back/const_errors"
 	glModel "back/models/gitlab"
 	"back/models/runners"
+	"back/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,15 +12,14 @@ import (
 )
 
 func ListUserRunnersFromGit(ctx *gin.Context) {
-	gitClientI, exists := ctx.Get("git_client")
-	if !exists {
+	gitClient := utils.GetGitClientFromContext(ctx)
+	if gitClient == nil {
 		ctx.JSON(http.StatusOK, gin.H{
-			"error":    "No git token",
+			"error":    consterrors.ErrNoGitToken.Error(),
 			"response": "",
 		})
 		return
 	}
-	gitClient := gitClientI.(*gitlab.Client)
 	var foundAll bool
 	var page int = 1
 	runners := []*gitlab.Runner{}
@@ -44,15 +45,14 @@ func ListUserRunnersFromGit(ctx *gin.Context) {
 }
 
 func ListUserRunners(ctx *gin.Context) {
-	userIDI, exists := ctx.Get("user_id")
-	if !exists {
+	userID := utils.GetUserIdFromContext(ctx)
+	if userID == "" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error":    "Not logged in",
+			"error":    consterrors.ErrNotLoggedIn.Error(),
 			"response": "",
 		})
 		return
 	}
-	userID := userIDI.(string)
 	runners, err := runners.GetUserRunners(userID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -68,15 +68,14 @@ func ListUserRunners(ctx *gin.Context) {
 }
 
 func AddRunnerForUser(ctx *gin.Context) {
-	userIDI, exists := ctx.Get("user_id")
-	if !exists {
+	userID := utils.GetUserIdFromContext(ctx)
+	if userID == "" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error":    "Not logged in",
+			"error":    consterrors.ErrNotLoggedIn.Error(),
 			"response": "",
 		})
 		return
 	}
-	userID := userIDI.(string)
 	args := struct {
 		IdRunner int
 	}{}
@@ -88,15 +87,14 @@ func AddRunnerForUser(ctx *gin.Context) {
 		})
 		return
 	}
-	gitClientI, exists := ctx.Get("git_client")
-	if !exists {
+	gitClient := utils.GetGitClientFromContext(ctx)
+	if gitClient == nil {
 		ctx.JSON(http.StatusOK, gin.H{
-			"error":    "No git token",
+			"error":    consterrors.ErrNoGitToken.Error(),
 			"response": "",
 		})
 		return
 	}
-	gitClient := gitClientI.(*gitlab.Client)
 	err = runners.AddRunnerForUser(gitClient, userID, args.IdRunner)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{

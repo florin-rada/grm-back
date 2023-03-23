@@ -8,8 +8,9 @@ import (
 	gl "github.com/xanzy/go-gitlab"
 )
 
-var token = "glpat-SQb5HA2ZVZNC2AUuuyAy"
-var client *gl.Client
+// TODO: replace *gl.CLient with a interface matching the gl.Client functions for unittesting purposes
+//var token = "temporary-token"
+//var client *gl.Client
 
 var ErrInvalidGitClient = errors.New("invalid gitlab client")
 
@@ -232,10 +233,10 @@ func UpdateRunner(client *gl.Client, id uint, runner *gl.UpdateRunnerDetailsOpti
 }
 
 func init() {
-	var err error
-	client, err = gl.NewClient(token, gl.WithBaseURL("https://gitlab.com/api/v4"))
+	// var err error
+	/* client, err = gl.NewClient(token, gl.WithBaseURL("https://gitlab.com/api/v4"))
 	if err != nil {
 		panic(fmt.Sprintf("Error creating gitlab client: %s", err.Error()))
-	}
+	} */
 	//fmt.Printf("We have client: %+v", client)
 }

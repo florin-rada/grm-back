@@ -82,8 +82,9 @@ type PasswordReset struct {
 
 type GitlabDetails struct {
 	IDUser      string `json:"id_user" gorm:"id_user;unique"`
-	Token       string `json:"token" gorm:"token"`
+	Token       string `json:"token" gorm:"token"` // it must NEVER be returned or exposed by controllers
 	InstanceURL string `json:"instance_url" gorm:"instance_url"`
+	SyncRate    int    `json:"sync_rate" gorm:"sync_rate"`
 }
 
 func ValidateUserPassword(email, password string) (bool, error) {
@@ -141,6 +142,7 @@ func CreateUser(email, password string, firstName string, lastName string) (stri
 		*kcUserId,
 		"",
 		"",
+		0,
 	}
 	resp := db.PrivateDB.Save(&gitDetails)
 	if resp.Error != nil {
@@ -184,12 +186,26 @@ func CreateUser(email, password string, firstName string, lastName string) (stri
 }
 
 func GetUserGitDetails(idUser string) (*GitlabDetails, error) {
-	glt := GitlabDetails{}
-	resp := db.PrivateDB.Model(GitlabDetails{}).Where("id_user=?", idUser).First(&glt)
+	gld := GitlabDetails{}
+	resp := db.PrivateDB.Model(GitlabDetails{}).Where("id_user=?", idUser).First(&gld)
 	if resp.Error != nil {
 		return nil, resp.Error
 	}
-	return &glt, nil
+	return &gld, nil
+}
+
+func SetUserGitDetails(gld *GitlabDetails) error {
+	if gld == nil {
+		return errors.New("no git details")
+	}
+	if gld.IDUser == "" {
+		return errors.New("No user ID")
+	}
+	resp := db.PrivateDB.Save(&gld)
+	if resp.Error != nil {
+		return resp.Error
+	}
+	return nil
 }
 
 func SetGitClientMiddleware() gin.HandlerFunc {
