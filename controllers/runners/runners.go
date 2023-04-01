@@ -6,6 +6,8 @@ import (
 	"back/models/runners"
 	"back/utils"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xanzy/go-gitlab"
@@ -107,4 +109,75 @@ func AddRunnerForUser(ctx *gin.Context) {
 		"response": "",
 	})
 
+}
+
+func TestGetJobsBetween(ctx *gin.Context) {
+	gitClient := utils.GetGitClientFromContext(ctx)
+	if gitClient == nil {
+		ctx.JSON(http.StatusOK, gin.H{
+			"error":    consterrors.ErrNoGitToken.Error(),
+			"response": "",
+		})
+		return
+	}
+
+	userID := utils.GetUserIdFromContext(ctx)
+	if userID == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error":    consterrors.ErrNotLoggedIn.Error(),
+			"response": "",
+		})
+		return
+	}
+
+	/* args := struct {
+		RunnerID  int       `json:"runner_id"`
+		StartDate time.Time `json:"start_date"`
+		EndDate   time.Time `json:"end_date"`
+	}{} */
+
+	/* err := ctx.BindJSON(&args)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	} */
+	startDate, err := time.Parse("2006-01-02", ctx.Query("start_date"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	endDate, err := time.Parse("2006-01-02", ctx.Query("end_date"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	runnerID, err := strconv.ParseInt(ctx.Query("runner_id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	jobs, err := glModel.GetJobsBetween(gitClient, int(runnerID), &startDate, &endDate)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"error":    "",
+		"response": jobs,
+	})
 }

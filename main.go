@@ -92,7 +92,7 @@ func main() {
 		authorized.GET("/git_details", users.GetUserGitDetails)
 		authorized.POST("/git_details", users.UpdateUserGitDetails)
 		authorized.POST("/test_git_details", users.TestGitConnection)
-
+		authorized.GET("/test_get_jobs", runners.TestGetJobsBetween)
 		authorized.GET("/test_mt", func(c *gin.Context) {
 			replyChan := make(chan int, 3)
 			min := int(0)
