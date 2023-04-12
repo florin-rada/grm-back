@@ -116,7 +116,7 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 	/* if endDate.Before(*startDate) {
 		return []*gl.Job{}, errors.New("start date is before end date")
 	} */
-	perPage := 3
+	perPage := 100
 	// we make sure our start and end date are truncated to only 24 hours
 	tmpStartDate := startDate.Truncate(24 * time.Hour)
 	startDate = &tmpStartDate
@@ -169,6 +169,7 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 		return jobs, nil
 	}
 	fmt.Printf("Date of last job in tmpJobs: %v", tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(time.Hour*24))
+	fmt.Printf("Num pages as received from x-total-page: %d", maxPage)
 	// we know we don't have anything on the first page so we try to find our desired pages
 	// try to find max limit by multiplying the number of days between today and end date
 	// with a counter untill we either receive a empty list or a date older than end date
@@ -189,14 +190,14 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 			if err != nil {
 				return nil, err
 			}
-			if len(tmpJobs) == 0 || tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(time.Hour*24).After(*endDate) {
+			if len(tmpJobs) == 0 || tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(time.Hour*24).Before(*endDate) {
 				found = true
 				maxPage = numDaysSinceEndDate*counter - 1
 				break
 			}
 		}
 	}
-
+	fmt.Printf("Starting binary search for our targeted dates")
 	for minPage != maxPage {
 		currentPage := int((maxPage + minPage) / 2)
 		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
@@ -230,7 +231,9 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 			continue
 		}
 	}
+	fmt.Printf("Finished binary search for targeted dates, maxPage is : %d", maxPage)
 	// going backward maxPage-- and adding all jobs
+	fmt.Printf("starting get jobs newer than end date")
 	pageCounter := maxPage
 prevPages:
 	for pageCounter >= 0 {
@@ -265,6 +268,8 @@ prevPages:
 		}
 		pageCounter--
 	}
+	fmt.Printf("Finished getting jobs newer than end date")
+	fmt.Printf("Starting getting rest of jobs until we pass end date")
 	// going forward maxPage++ and adding all jobs
 	pageCounter = maxPage
 nextPages:
@@ -285,9 +290,9 @@ nextPages:
 		}
 		foundOlder := false
 		for _, job := range tmpJobs {
-			if job.CreatedAt.Truncate(time.Hour * 24).Before(*startDate) {
+			/* if job.CreatedAt.Truncate(time.Hour * 24).Before(*startDate) {
 				foundOlder = true
-			}
+			} */
 			createdAt := job.CreatedAt.Truncate(time.Hour * 24)
 			if (createdAt.After(*startDate) || createdAt.Equal(*startDate)) && (createdAt.Before(*endDate) || createdAt.Equal(*endDate)) {
 				//jobs = append(jobs, job)
@@ -295,6 +300,8 @@ nextPages:
 					jobsMap[job.ID] = job
 					jobIds = append(jobIds, job.ID)
 				}
+			} else {
+				foundOlder = true
 			}
 		}
 		if foundOlder {
@@ -302,6 +309,8 @@ nextPages:
 		}
 		pageCounter++
 	}
+	fmt.Printf("Finished Getting remaining jobs")
+	fmt.Printf("Starting sort of jobs")
 	if len(jobsMap) > 0 {
 		sort.Ints(jobIds)
 		sort.Sort(sort.Reverse(sort.IntSlice(jobIds)))
@@ -309,6 +318,7 @@ nextPages:
 			jobs = append(jobs, jobsMap[id])
 		}
 	}
+	fmt.Printf("Finished sorting of jobs")
 	return jobs, nil
 
 	// we get jobs on first page, if we don't have our "end date" on that page
