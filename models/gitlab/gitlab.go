@@ -3,6 +3,8 @@ package gitlab
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
 	"time"
 
 	gl "github.com/xanzy/go-gitlab"
@@ -100,15 +102,21 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 		return nil, ErrInvalidGitClient
 	}
 	jobs := []*gl.Job{}
-
+	// due to moving nature of the results returned from the api
+	// sometimes we the same job can apear in two results
+	// to eliminate this we store the jobs in a map with the ID as the key
+	// and the ids in a slice
+	// this way at the end we can sort the ID slice and than add them to our slice result
+	jobsMap := make(map[int]*gl.Job)
+	jobIds := []int{}
 	if startDate == nil || endDate == nil {
 		return []*gl.Job{}, errors.New("invalid start date or end date")
 	}
 
-	if endDate.Before(*startDate) {
+	/* if endDate.Before(*startDate) {
 		return []*gl.Job{}, errors.New("start date is before end date")
-	}
-	perPage := 2
+	} */
+	perPage := 3
 	// we make sure our start and end date are truncated to only 24 hours
 	tmpStartDate := startDate.Truncate(24 * time.Hour)
 	startDate = &tmpStartDate
@@ -123,7 +131,186 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 	//numDaysSinceStartDate := int(time.Now().Sub(*startDate) / (24 * time.Hour))
 	//var pagesInFirstDay int
 	var page int = 1
-	var counter = 1
+	//var counter = 1
+	// we first get the first page
+	// if we receive less than 100 jobs than we can just iterate over
+	// what we received and return the jobs in our range
+	sortDir := "desc"
+	orderBy := "id"
+	tmpJobs, resp, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
+		ListOptions: gl.ListOptions{
+			Page:    page,
+			PerPage: perPage,
+		},
+		OrderBy: &orderBy,
+		Sort:    &sortDir,
+	})
+	if err != nil {
+		return nil, err
+	}
+	maxPageStr := resp.Header.Get("x-total-pages")
+	var maxPage int
+	if maxPageStr != "" {
+		tmp, err := strconv.ParseInt(maxPageStr, 10, 64)
+		if err != nil {
+			fmt.Printf("Error, no x-total-pages header received, skipping\n")
+		} else {
+			maxPage = int(tmp)
+		}
+	}
+	if len(tmpJobs) < perPage {
+		for _, job := range tmpJobs {
+			createdAt := job.CreatedAt.Truncate(time.Hour * 24)
+			fmt.Printf("createdAt truncated: %v\n", createdAt)
+			if (createdAt.After(*startDate) || createdAt.Equal(*startDate)) && (createdAt.Before(*endDate) || createdAt.Equal(*endDate)) {
+				jobs = append([]*gl.Job{job}, jobs...)
+			}
+		}
+		return jobs, nil
+	}
+	fmt.Printf("Date of last job in tmpJobs: %v", tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(time.Hour*24))
+	// we know we don't have anything on the first page so we try to find our desired pages
+	// try to find max limit by multiplying the number of days between today and end date
+	// with a counter untill we either receive a empty list or a date older than end date
+	minPage := 1
+	if maxPage == 0 {
+		found := false
+		counter := 1
+		maxPage = 1
+		for !found {
+			tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
+				ListOptions: gl.ListOptions{
+					Page:    numDaysSinceEndDate * counter,
+					PerPage: perPage,
+				},
+				OrderBy: &orderBy,
+				Sort:    &sortDir,
+			})
+			if err != nil {
+				return nil, err
+			}
+			if len(tmpJobs) == 0 || tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(time.Hour*24).After(*endDate) {
+				found = true
+				maxPage = numDaysSinceEndDate*counter - 1
+				break
+			}
+		}
+	}
+
+	for minPage != maxPage {
+		currentPage := int((maxPage + minPage) / 2)
+		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
+			ListOptions: gl.ListOptions{
+				Page:    currentPage,
+				PerPage: perPage,
+			},
+			OrderBy: &orderBy,
+			Sort:    &sortDir,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if len(tmpJobs) == 0 {
+			maxPage = currentPage
+			continue
+		}
+		// we found a job between our days
+		if HaveJobBetweenDates(tmpJobs, *startDate, *endDate) {
+			break
+		}
+		middleJob := tmpJobs[int(len(tmpJobs)/2)]
+		// check if date is in right side (older)
+		if middleJob.CreatedAt.Truncate(time.Hour * 24).After(*endDate) {
+			minPage = currentPage + 1
+			continue
+		}
+		// check if date is on left side (newer)
+		if middleJob.CreatedAt.Truncate(time.Hour * 24).Before(*endDate) {
+			maxPage = currentPage - 1
+			continue
+		}
+	}
+	// going backward maxPage-- and adding all jobs
+	pageCounter := maxPage
+prevPages:
+	for pageCounter >= 0 {
+		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
+			ListOptions: gl.ListOptions{
+				Page:    pageCounter,
+				PerPage: perPage,
+			},
+			OrderBy: &orderBy,
+			Sort:    &sortDir,
+		})
+		if err != nil {
+			return nil, err
+		}
+		foundNewer := false
+		for _, job := range tmpJobs {
+			if job.CreatedAt.Truncate(time.Hour * 24).After(*endDate) {
+				foundNewer = true
+				continue
+			}
+			createdAt := job.CreatedAt.Truncate(time.Hour * 24)
+			if (createdAt.After(*startDate) || createdAt.Equal(*startDate)) && (createdAt.Before(*endDate) || createdAt.Equal(*endDate)) {
+				//jobs = append([]*gl.Job{job}, jobs...)
+				if _, ok := jobsMap[job.ID]; !ok {
+					jobsMap[job.ID] = job
+					jobIds = append(jobIds, job.ID)
+				}
+			}
+		}
+		if foundNewer {
+			break prevPages
+		}
+		pageCounter--
+	}
+	// going forward maxPage++ and adding all jobs
+	pageCounter = maxPage
+nextPages:
+	for {
+		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
+			ListOptions: gl.ListOptions{
+				Page:    pageCounter,
+				PerPage: perPage,
+			},
+			OrderBy: &orderBy,
+			Sort:    &sortDir,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if len(tmpJobs) == 0 {
+			break
+		}
+		foundOlder := false
+		for _, job := range tmpJobs {
+			if job.CreatedAt.Truncate(time.Hour * 24).Before(*startDate) {
+				foundOlder = true
+			}
+			createdAt := job.CreatedAt.Truncate(time.Hour * 24)
+			if (createdAt.After(*startDate) || createdAt.Equal(*startDate)) && (createdAt.Before(*endDate) || createdAt.Equal(*endDate)) {
+				//jobs = append(jobs, job)
+				if _, ok := jobsMap[job.ID]; !ok {
+					jobsMap[job.ID] = job
+					jobIds = append(jobIds, job.ID)
+				}
+			}
+		}
+		if foundOlder {
+			break nextPages
+		}
+		pageCounter++
+	}
+	if len(jobsMap) > 0 {
+		sort.Ints(jobIds)
+		sort.Sort(sort.Reverse(sort.IntSlice(jobIds)))
+		for _, id := range jobIds {
+			jobs = append(jobs, jobsMap[id])
+		}
+	}
+	return jobs, nil
+
 	// we get jobs on first page, if we don't have our "end date" on that page
 	// we set page = number of days since today and our end date
 	// we get jobs from that page
@@ -131,7 +318,7 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 	// until we overshoot our end date
 	// After that we keep spliting doing a standard binary search
 	// determining our max length
-	for {
+	/* for {
 		page = counter * numDaysSinceEndDate
 		// get jobs on page untill we overshoot our end date
 		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
@@ -157,36 +344,9 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 		}
 		counter++
 		//
-	}
+	} */
 
-	minPage := 1
-	maxPage := page
-	tmpPage := int((maxPage - minPage) / 2)
-	for minPage == maxPage {
-		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-			ListOptions: gl.ListOptions{
-				Page:    tmpPage,
-				PerPage: perPage,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		// we know we are on the right side
-		if tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(24 * time.Hour).After(*endDate) {
-			minPage = tmpPage
-			tmpPage = int((maxPage - minPage) / 2)
-			continue
-		} else if tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(24 * time.Hour).Before(*endDate) {
-			maxPage = tmpPage
-			tmpPage = int((maxPage - minPage) / 2)
-			continue
-		} else if tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(24 * time.Hour).Equal(*endDate) {
-			// we found our page so we break the loop
-			break
-		}
-	}
-	page = tmpPage
+	/* page = tmpPage
 	// we might have some more jobs from the same day on the next page so we get the next page and loop throug them adding them to
 	// our jobs
 	tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
@@ -228,7 +388,7 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 		page--
 
 	}
-	return jobs, nil
+	return jobs, nil */
 	// doing the actual binary search part
 	/* for pagesInFirstDay < 0 {
 		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
@@ -284,8 +444,39 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 		}
 
 	}
+	*/
+	return jobs, nil
+}
 
-	return jobs, nil */
+// Keep in mind, jobs are ordered descending by date, that means jobs[0].CreatedAt is newer
+// than jobs[len(jobs) - 1].CreatedAt
+func HaveJobBetweenDates(jobs []*gl.Job, startDate time.Time, endDate time.Time) bool {
+	if len(jobs) == 0 {
+		return false
+	}
+	// making sure the dates are truncated to 24 hours so we only have the date to compare
+	startDate = startDate.Truncate(time.Hour * 24)
+	endDate = endDate.Truncate(time.Hour * 24)
+	first := jobs[0].CreatedAt.Truncate(time.Hour * 24)
+	last := jobs[len(jobs)-1].CreatedAt.Truncate(time.Hour * 24)
+	days := int(first.Sub(last).Hours() / 24)
+	if days == 0 {
+		return (first.Equal(startDate) || first.After(startDate)) && (first.Equal(endDate) || first.Before(endDate))
+	}
+	if days == 1 {
+		return ((first.Equal(startDate) || first.After(startDate)) &&
+			(first.Equal(endDate) || first.Before(endDate))) || ((last.Equal(startDate) || last.After(startDate)) &&
+			(last.Equal(endDate) || last.Before(endDate)))
+	}
+	if days > 1 {
+		for _, job := range jobs {
+			jobCreatedAt := job.CreatedAt.Truncate(time.Hour * 24)
+			if (jobCreatedAt.Equal(startDate) || jobCreatedAt.After(startDate)) && (jobCreatedAt.Equal(endDate) || jobCreatedAt.Before(endDate)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func GetClient(baseUrl string, token string) (*gl.Client, error) {
