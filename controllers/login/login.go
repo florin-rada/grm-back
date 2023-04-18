@@ -2,6 +2,7 @@ package login
 
 import (
 	"back/models/keycloak"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -41,11 +42,30 @@ func CheckLoginMidleware() gin.HandlerFunc {
 			return
 		} */
 		err := keycloak.ValidateToken(accessToken)
-		if err != nil {
+		if err != nil && !errors.Is(err, keycloak.ErrExpiredToken) {
 			next.JSON(http.StatusUnauthorized, gin.H{
 				"error": err.Error(),
 			})
 			return
+		} else if errors.Is(err, keycloak.ErrExpiredToken) {
+			refreshTokenI := sess.Get("refresh_token")
+			if refreshTokenI == nil {
+				next.JSON(http.StatusUnauthorized, gin.H{
+					"error": "No token available",
+				})
+				return
+			}
+			jwt, err := keycloak.RefreshToken(refreshTokenI.(string))
+			if err != nil {
+				next.JSON(http.StatusUnauthorized, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			accessToken = jwt.AccessToken
+			sess.Set("access_token", jwt.AccessToken)
+			sess.Set("refresh_token", jwt.RefreshToken)
+			sess.Save()
 		}
 		ui, err := keycloak.GetUserInfo(accessToken)
 		if err != nil {

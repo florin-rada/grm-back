@@ -173,45 +173,7 @@ func main() {
 
 		})
 	}
-	//r.GET("/confirm_registration", users.ConfirmRegistration)
-	/* r.GET("/test_email_send", func(ctx *gin.Context) {
-		from := "florin.rada87@yahoo.com"
-		smtpApiKeyName := "apikey"
-		smtpApiKey := "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"
-		// Receiver email address.
-		to := []string{
-			"florin.rada87@yahoo.com",
-		}
 
-		// smtp server configuration.
-		smtpHost := "smtp.sendgrid.net"
-		smtpPort := "587"
-		header := make(map[string]string)
-		header["From"] = from
-		header["To"] = to[0]
-		header["MIME-Version"] = "1.0"
-		header["Content-Type"] = "text/plain; charset=\"utf-8\""
-		header["Content-Transfer-Encoding"] = "base64"
-		// Message.
-		message := ""
-		for k, v := range header {
-			message += fmt.Sprintf("%s: %s\r\n", k, v)
-		}
-		message += "\r\nThis is a test email message."
-		fmt.Printf("the email message: %s", message)
-		// Authentication.
-		auth := smtp.PlainAuth("", smtpApiKeyName, smtpApiKey, smtpHost)
-
-		// Sending email.
-		err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, []byte(message))
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		ctx.JSON(200, gin.H{
-			"error": "",
-		})
-	}) */
 	r.GET("/mock_data", mock_data.ReturnMockData)
 	r.StaticFile("/", "../../front/build/index.html")
 	r.Static("/static", "../../front/build/static")

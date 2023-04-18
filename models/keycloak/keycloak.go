@@ -18,6 +18,8 @@ type keycloak struct {
 	adminCLISecret string
 }
 
+var ErrExpiredToken = errors.New("expired token")
+
 var kc keycloak
 
 func LoginUser(username string, password string) (*gocloak.JWT, error) {
@@ -28,8 +30,8 @@ func LoginUser(username string, password string) (*gocloak.JWT, error) {
 	return jwt, nil
 }
 
-func RefreshToken(accessToken string) (*gocloak.JWT, error) {
-	jwt, err := kc.client.RefreshToken(context.Background(), accessToken, kc.clientID, kc.clientSecret, kc.realm)
+func RefreshToken(refreshToken string) (*gocloak.JWT, error) {
+	jwt, err := kc.client.RefreshToken(context.Background(), refreshToken, kc.clientID, kc.clientSecret, kc.realm)
 	return jwt, err
 }
 
@@ -39,7 +41,7 @@ func ValidateToken(accessToken string) error {
 		return err
 	}
 	if !*result.Active {
-		return errors.New("invalid or expired token")
+		return ErrExpiredToken
 	}
 	return nil
 }
