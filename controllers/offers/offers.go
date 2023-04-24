@@ -15,6 +15,12 @@ type OfferController struct {
 	db *gorm.DB
 }
 
+func NewOfferController(db *gorm.DB) *OfferController {
+	return &OfferController{
+		db: db,
+	}
+}
+
 func (oc *OfferController) CreateOffer(c *gin.Context) {
 	// Parse the request body to get the new offer data
 	var offer offers.Offer

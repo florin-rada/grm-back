@@ -25,7 +25,111 @@ type Offer struct {
 	Published   bool      `json:"published" gorm:"published"`
 }
 
-func AddOffer(offer Offer) error {
+type OfferRepository struct {
+	db *gorm.DB
+}
+
+func NewOfferRepository(db *gorm.DB) *OfferRepository {
+	return &OfferRepository{db}
+}
+func (o *OfferRepository) AddOffer(offer Offer) error {
+	// Validate the offer fields
+	if offer.Name == "" {
+		return errors.New("Offer name cannot be empty")
+	}
+	if offer.MaxRunners < 0 {
+		return errors.New("MaxRunners cannot be negative")
+	}
+	if offer.BasePrice < 0 {
+		return errors.New("BasePrice cannot be negative")
+	}
+	if offer.Currency == "" {
+		return errors.New("Currency cannot be empty")
+	}
+	if offer.MaxSyncRate.IsZero() {
+		return errors.New("MaxSyncRate cannot be zero")
+	}
+
+	// Add the offer to the database
+	result := o.db.Create(&offer)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func (o *OfferRepository) EditOffer(id uint, updatedOffer Offer) error {
+	// Find the offer to update
+	var offer Offer
+	result := o.db.First(&offer, id)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// Update the offer fields
+	offer.Name = updatedOffer.Name
+	offer.MaxRunners = updatedOffer.MaxRunners
+	offer.BasePrice = updatedOffer.BasePrice
+	offer.Currency = updatedOffer.Currency
+	offer.Description = updatedOffer.Description
+	offer.MaxSyncRate = updatedOffer.MaxSyncRate
+	offer.Published = updatedOffer.Published
+
+	// Save the changes to the database
+	result = o.db.Save(&offer)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+}
+
+func (o *OfferRepository) DeleteOffer(id uint) error {
+	// Find the offer to delete
+	var offer Offer
+	result := o.db.First(&offer, id)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// Delete the offer from the database
+	result = o.db.Delete(&offer)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+}
+
+/* // AddOffer adds a new offer to the database
+func (r *OfferRepository) AddOffer(offer Offer) error {
+	// Validate the offer fields
+	if offer.Name == "" {
+		return errors.New("Offer name cannot be empty")
+	}
+	if offer.MaxRunners < 0 {
+		return errors.New("MaxRunners cannot be negative")
+	}
+	if offer.BasePrice < 0 {
+		return errors.New("BasePrice cannot be negative")
+	}
+	if offer.Currency == "" {
+		return errors.New("Currency cannot be empty")
+	}
+	if offer.MaxSyncRate.IsZero() {
+		return errors.New("MaxSyncRate cannot be zero")
+	}
+
+	// Add the offer to the database
+	result := r.db.Create(&offer)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+} */
+
+/* func AddOffer(offer Offer) error {
 	// Validate the offer fields
 	if offer.Name == "" {
 		return errors.New("Offer name cannot be empty")
@@ -50,51 +154,52 @@ func AddOffer(offer Offer) error {
 	}
 
 	return nil
-}
+} */
 
-func EditOffer(id uint, updatedOffer Offer) error {
-	// Find the offer to update
-	var offer Offer
-	result := database.PublicDB.First(&offer, id)
-	if result.Error != nil {
-		return result.Error
+/*
+	 func EditOffer(id uint, updatedOffer Offer) error {
+		// Find the offer to update
+		var offer Offer
+		result := database.PublicDB.First(&offer, id)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		// Update the offer fields
+		offer.Name = updatedOffer.Name
+		offer.MaxRunners = updatedOffer.MaxRunners
+		offer.BasePrice = updatedOffer.BasePrice
+		offer.Currency = updatedOffer.Currency
+		offer.Description = updatedOffer.Description
+		offer.MaxSyncRate = updatedOffer.MaxSyncRate
+		offer.Published = updatedOffer.Published
+
+		// Save the changes to the database
+		result = database.PublicDB.Save(&offer)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		return nil
 	}
 
-	// Update the offer fields
-	offer.Name = updatedOffer.Name
-	offer.MaxRunners = updatedOffer.MaxRunners
-	offer.BasePrice = updatedOffer.BasePrice
-	offer.Currency = updatedOffer.Currency
-	offer.Description = updatedOffer.Description
-	offer.MaxSyncRate = updatedOffer.MaxSyncRate
-	offer.Published = updatedOffer.Published
+	func DeleteOffer(id uint) error {
+		// Find the offer to delete
+		var offer Offer
+		result := database.PublicDB.First(&offer, id)
+		if result.Error != nil {
+			return result.Error
+		}
 
-	// Save the changes to the database
-	result = database.PublicDB.Save(&offer)
-	if result.Error != nil {
-		return result.Error
+		// Delete the offer from the database
+		result = database.PublicDB.Delete(&offer)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		return nil
 	}
-
-	return nil
-}
-
-func DeleteOffer(id uint) error {
-	// Find the offer to delete
-	var offer Offer
-	result := database.PublicDB.First(&offer, id)
-	if result.Error != nil {
-		return result.Error
-	}
-
-	// Delete the offer from the database
-	result = database.PublicDB.Delete(&offer)
-	if result.Error != nil {
-		return result.Error
-	}
-
-	return nil
-}
-
+*/
 func init() {
 	err := database.PublicDB.AutoMigrate(&Offer{})
 	if err != nil {

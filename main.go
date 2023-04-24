@@ -3,6 +3,7 @@ package main
 import (
 	"back/controllers/login"
 	"back/controllers/mock_data"
+	"back/controllers/offers"
 	"back/controllers/runners"
 	"back/controllers/users"
 	"back/database"
@@ -81,6 +82,8 @@ func main() {
 		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
 		MaxAge:       12 * time.Hour,
 	}))
+
+	oc := offers.NewOfferController(database.PublicDB)
 	r.POST("/login", login.ValidateLogin)
 	r.POST("/register", users.Register)
 	r.GET("/validate_token", users.ValidateToken)
@@ -93,6 +96,11 @@ func main() {
 		authorized.POST("/git_details", users.UpdateUserGitDetails)
 		authorized.POST("/test_git_details", users.TestGitConnection)
 		authorized.GET("/test_get_jobs", runners.TestGetJobsBetween)
+		authorized.GET("/offers", oc.GetOffers)
+		authorized.POST("/offers", oc.CreateOffer)
+		authorized.PUT("/offers/:id", oc.UpdateOffer)
+		authorized.DELETE("/offers/:id", oc.DeleteOffer)
+		authorized.GET("/offers/:id", oc.GetOffer)
 		authorized.GET("/test_mt", func(c *gin.Context) {
 			replyChan := make(chan int, 3)
 			min := int(0)
