@@ -1,6 +1,7 @@
 package runners
 
 import (
+	consterrors "back/const_errors"
 	db "back/database"
 	"errors"
 	"fmt"
@@ -8,7 +9,12 @@ import (
 	"time"
 
 	gl "github.com/xanzy/go-gitlab"
+	"gorm.io/gorm"
 )
+
+type RunnerRepository struct {
+	db *gorm.DB
+}
 
 type Runner struct {
 	InternalUserId string    `json:"internal_user_id,omitempty" gorm:"internal_user_id"`
@@ -27,6 +33,10 @@ type Runner struct {
 	MaximumTimeout int       `json:"maximum_timeout" gorm:"maximum_timeout"`
 	ContactedAt    time.Time `json:"contacted_at" gorm:"contacted_at"`
 	MaxConcurrent  int       `json:"max_concurent" gorm:"max_concurrent"`
+}
+
+func NewRunnerRepository(db *gorm.DB) *RunnerRepository {
+	return &RunnerRepository{db: db}
 }
 
 func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (*Runner, error) {
@@ -54,52 +64,52 @@ func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (*Runner, error) {
 	return &r, nil
 }
 
-func GetRunner(runnerID uint) (Runner, error) {
+func (rr RunnerRepository) GetRunner(runnerID uint) (Runner, error) {
 	r := Runner{}
-	resp := db.PublicDB.Find(&r, runnerID)
+	resp := rr.db.Find(&r, runnerID)
 	if resp.Error != nil {
 		return Runner{}, resp.Error
 	}
 	return r, nil
 }
 
-func UpdateRunnerOnGit(r Runner) error {
+func (rr RunnerRepository) UpdateRunnerOnGit(r Runner) error {
 	return nil
 }
 
-func UpdateRunner(r Runner) error {
+func (rr RunnerRepository) UpdateRunner(r Runner) error {
 	return nil
 }
 
-func GetUserRunners(userID string) ([]Runner, error) {
+func (rr RunnerRepository) GetUserRunners(userID string) ([]Runner, error) {
 	r := []Runner{}
-	resp := db.PublicDB.Where("internal_user_id=?", userID).Find(&r)
+	resp := rr.db.Where("internal_user_id=?", userID).Find(&r)
 	if resp.Error != nil {
 		return []Runner{}, resp.Error
 	}
 	return r, nil
 }
 
-func AddRunnerForUser(client *gl.Client, userID string, runnerId int) error {
+func (rr RunnerRepository) AddRunnerForUser(client *gl.Client, userID string, runnerId int) error {
 	if client == nil {
-		return errors.New("No client")
+		return consterrors.ErrNoGitClient
 	}
 	if userID == "" {
-		return errors.New("No user id")
+		return consterrors.ErrNoUserId
 	}
 	rd, _, err := client.Runners.GetRunnerDetails(runnerId)
 	if err != nil {
 		return err
 	}
 	if rd == nil {
-		return errors.New("No details returned")
+		return consterrors.ErrRecordNotFound
 	}
 	r, err := TranslateGLRunnerDetailsToRunner(rd)
 	if err != nil {
 		return err
 	}
 	r.InternalUserId = userID
-	resp := db.PublicDB.Save(r)
+	resp := rr.db.Save(r)
 	if resp.Error != nil {
 		return resp.Error
 	}

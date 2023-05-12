@@ -92,7 +92,7 @@ func TranslateGLJobToJob(gljob *gl.Job) (*Job, error) {
 	return &j, nil
 }
 
-func GetRunnerJobs(idRunner uint, idUser uint, page int, perPage int) ([]Job, error) {
+func GetRunnerJobs(idRunner uint, idUser string, page int, perPage int) ([]Job, error) {
 	tr := db.PublicDB.Model(&Job{})
 	tr = tr.Where("runner_id=?", idRunner)
 	tr = tr.Where("internal_user_id=?", idUser)
@@ -110,7 +110,7 @@ func GetRunnerJobs(idRunner uint, idUser uint, page int, perPage int) ([]Job, er
 	return jobs, nil
 }
 
-func SearchRunnerJobs(idRunner uint, idUser uint, params JobSearchArgs) ([]Job, error) {
+func SearchRunnerJobs(idRunner uint, idUser string, params JobSearchArgs) ([]Job, error) {
 	tr := db.PublicDB.Model(&Job{})
 	tr = tr.Where("runner_id=?", idRunner)
 	tr = tr.Where("internal_user_id=?", idUser)

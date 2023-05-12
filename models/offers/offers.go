@@ -1,8 +1,8 @@
 package offers
 
 import (
+	consterrors "back/const_errors"
 	"back/database"
-	"errors"
 	"fmt"
 	"time"
 
@@ -35,19 +35,19 @@ func NewOfferRepository(db *gorm.DB) *OfferRepository {
 func (o *OfferRepository) AddOffer(offer Offer) error {
 	// Validate the offer fields
 	if offer.Name == "" {
-		return errors.New("Offer name cannot be empty")
+		return consterrors.ErrEmptyOfferName
 	}
 	if offer.MaxRunners < 0 {
-		return errors.New("MaxRunners cannot be negative")
+		return consterrors.ErrNegativeMaxRunners
 	}
 	if offer.BasePrice < 0 {
-		return errors.New("BasePrice cannot be negative")
+		return consterrors.ErrNegativeBasePrice
 	}
 	if offer.Currency == "" {
-		return errors.New("Currency cannot be empty")
+		return consterrors.ErrEmptyCurrency
 	}
 	if offer.MaxSyncRate.IsZero() {
-		return errors.New("MaxSyncRate cannot be zero")
+		return consterrors.ErrZerodMaxSyncRate
 	}
 
 	// Add the offer to the database
@@ -99,6 +99,50 @@ func (o *OfferRepository) DeleteOffer(id uint) error {
 	}
 
 	return nil
+}
+
+func (o *OfferRepository) GetOffers() ([]Offer, error) {
+	var offers []Offer
+	result := o.db.Find(&offers)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return offers, nil
+}
+
+func (o *OfferRepository) PublishOffer(id int) error {
+	offer, err := o.GetOffer(id)
+	if err != nil {
+		return err
+	}
+	offer.Published = true
+	result := o.db.Save(&offer)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func (o *OfferRepository) UnpublishOffer(id int) error {
+	offer, err := o.GetOffer(id)
+	if err != nil {
+		return err
+	}
+	offer.Published = true
+	result := o.db.Save(&offer)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func (o *OfferRepository) GetOffer(id int) (Offer, error) {
+	var offer Offer
+	result := o.db.First(&offer)
+	if result.Error != nil {
+		return Offer{}, result.Error
+	}
+	return offer, nil
 }
 
 /* // AddOffer adds a new offer to the database

@@ -148,15 +148,12 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 	if err != nil {
 		return nil, err
 	}
-	maxPageStr := resp.Header.Get("x-total-pages")
-	var maxPage int
-	if maxPageStr != "" {
-		tmp, err := strconv.ParseInt(maxPageStr, 10, 64)
-		if err != nil {
-			fmt.Printf("Error, no x-total-pages header received, skipping\n")
-		} else {
-			maxPage = int(tmp)
-		}
+	if len(tmpJobs) == 0 {
+		return []*gl.Job{}, nil
+	}
+	firstJobCreatedAt := tmpJobs[0].CreatedAt.Truncate(time.Hour * 24)
+	if endDate.After(firstJobCreatedAt) {
+		return []*gl.Job{}, nil
 	}
 	if len(tmpJobs) < perPage {
 		for _, job := range tmpJobs {
@@ -167,6 +164,16 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 			}
 		}
 		return jobs, nil
+	}
+	maxPageStr := resp.Header.Get("x-total-pages")
+	var maxPage int
+	if maxPageStr != "" {
+		tmp, err := strconv.ParseInt(maxPageStr, 10, 64)
+		if err != nil {
+			fmt.Printf("Error, no x-total-pages header received, skipping\n")
+		} else {
+			maxPage = int(tmp)
+		}
 	}
 	fmt.Printf("Date of last job in tmpJobs: %v", tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(time.Hour*24))
 	fmt.Printf("Num pages as received from x-total-page: %d", maxPage)
@@ -198,7 +205,7 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 		}
 	}
 	fmt.Printf("Starting binary search for our targeted dates")
-	for minPage != maxPage {
+	for minPage <= maxPage {
 		currentPage := int((maxPage + minPage) / 2)
 		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
 			ListOptions: gl.ListOptions{
@@ -321,141 +328,6 @@ nextPages:
 	fmt.Printf("Finished sorting of jobs")
 	return jobs, nil
 
-	// we get jobs on first page, if we don't have our "end date" on that page
-	// we set page = number of days since today and our end date
-	// we get jobs from that page
-	// if last item's date is newer that our end date we double our page number by the days
-	// until we overshoot our end date
-	// After that we keep spliting doing a standard binary search
-	// determining our max length
-	/* for {
-		page = counter * numDaysSinceEndDate
-		// get jobs on page untill we overshoot our end date
-		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-			ListOptions: gl.ListOptions{
-				Page:    page,
-				PerPage: perPage,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		if len(tmpJobs) == 0 {
-			numDaysSinceEndDate /= 2
-			counter = 1
-			continue
-		}
-		lastJob := tmpJobs[len(tmpJobs)-1]
-		fmt.Printf("CreatedAt date for last job in row with id %d is %v", lastJob.ID, lastJob.CreatedAt)
-		if lastJob.CreatedAt.Truncate(24*time.Hour).After(*endDate) ||
-			lastJob.CreatedAt.Truncate(24*time.Hour).Equal(*endDate) {
-			fmt.Printf("Found date after our end date on page %d", page)
-			break
-		}
-		counter++
-		//
-	} */
-
-	/* page = tmpPage
-	// we might have some more jobs from the same day on the next page so we get the next page and loop throug them adding them to
-	// our jobs
-	tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-		ListOptions: gl.ListOptions{
-			Page:    page + 1,
-			PerPage: perPage,
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	for _, j := range tmpJobs {
-		if j.CreatedAt.Truncate(24 * time.Hour).Equal(*endDate) {
-			jobs = append(jobs, j)
-			continue
-		} else if j.CreatedAt.Truncate(24 * time.Hour).After(*endDate) {
-			break
-		}
-	}
-	// getting all the jobs until we find a job newer than our start date
-	for page >= 1 {
-		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-			ListOptions: gl.ListOptions{
-				Page:    page,
-				PerPage: perPage,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		if tmpJobs[0].CreatedAt.Truncate(24 * time.Hour).Before(*startDate) {
-			for i := len(tmpJobs); i >= 0; i-- {
-				jobs = append(jobs, tmpJobs[i])
-			}
-			break
-		} else if tmpJobs[0].CreatedAt.Truncate(24 * time.Hour).After(*startDate) {
-			jobs = append(tmpJobs, jobs...)
-		}
-		page--
-
-	}
-	return jobs, nil */
-	// doing the actual binary search part
-	/* for pagesInFirstDay < 0 {
-		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-			ListOptions: gl.ListOptions{
-				Page:    page,
-				PerPage: 100,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		lastJob := tmpJobs[len(tmpJobs)-1]
-		daysInPage := int(time.Since(*lastJob.CreatedAt) / (24 * time.Hour))
-		if daysInPage > 0 {
-			pagesInFirstDay = page
-			break
-		}
-		page++
-	}
-	newPage := numDaysSinceEndDate * pagesInFirstDay
-	var foundBeforeDate bool = false
-	//var foundEndDate bool = false
-	for foundBeforeDate {
-		if newPage < 0 {
-			break
-		}
-		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-			ListOptions: gl.ListOptions{
-				Page:    newPage,
-				PerPage: 100,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		if len(tmpJobs) == 0 {
-			newPage--
-			continue
-		}
-		tmpJob := tmpJobs[0]
-		if !endDate.Before(*tmpJob.CreatedAt) {
-			newPage--
-			continue
-		}
-		for _, tmpJob := range tmpJobs {
-			if startDate.Before(*tmpJob.CreatedAt) {
-				foundBeforeDate = true
-				break
-			}
-			if endDate.Before(*tmpJob.CreatedAt) {
-				jobs = append(jobs, tmpJob)
-			}
-		}
-
-	}
-	*/
-	return jobs, nil
 }
 
 // Keep in mind, jobs are ordered descending by date, that means jobs[0].CreatedAt is newer

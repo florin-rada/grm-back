@@ -12,12 +12,14 @@ import (
 )
 
 type OfferController struct {
-	db *gorm.DB
+	db              *gorm.DB
+	offerRepository offers.OfferRepository
 }
 
 func NewOfferController(db *gorm.DB) *OfferController {
 	return &OfferController{
-		db: db,
+		db:              db,
+		offerRepository: *offers.NewOfferRepository(db),
 	}
 }
 
@@ -30,7 +32,7 @@ func (oc *OfferController) CreateOffer(c *gin.Context) {
 	}
 
 	// Add the offer to the database
-	if err := offers.AddOffer(offer); err != nil {
+	if err := oc.offerRepository.AddOffer(offer); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

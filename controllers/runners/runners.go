@@ -3,6 +3,7 @@ package runners
 import (
 	consterrors "back/const_errors"
 	glModel "back/models/gitlab"
+	jobsModel "back/models/jobs"
 	"back/models/runners"
 	"back/utils"
 	"net/http"
@@ -11,9 +12,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/xanzy/go-gitlab"
+	"gorm.io/gorm"
 )
 
-func ListUserRunnersFromGit(ctx *gin.Context) {
+type RunnerController struct {
+	db *gorm.DB
+	rr *runners.RunnerRepository
+}
+
+func NewRunnerController(db *gorm.DB) *RunnerController {
+	return &RunnerController{
+		db: db,
+		rr: runners.NewRunnerRepository(db),
+	}
+}
+
+func (rc RunnerController) ListUserRunnersFromGit(ctx *gin.Context) {
 	gitClient := utils.GetGitClientFromContext(ctx)
 	if gitClient == nil {
 		ctx.JSON(http.StatusOK, gin.H{
@@ -46,7 +60,7 @@ func ListUserRunnersFromGit(ctx *gin.Context) {
 	})
 }
 
-func ListUserRunners(ctx *gin.Context) {
+func (rc RunnerController) ListUserRunners(ctx *gin.Context) {
 	userID := utils.GetUserIdFromContext(ctx)
 	if userID == "" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
@@ -55,7 +69,7 @@ func ListUserRunners(ctx *gin.Context) {
 		})
 		return
 	}
-	runners, err := runners.GetUserRunners(userID)
+	runners, err := rc.rr.GetUserRunners(userID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
@@ -69,7 +83,68 @@ func ListUserRunners(ctx *gin.Context) {
 	})
 }
 
-func AddRunnerForUser(ctx *gin.Context) {
+func (rc RunnerController) GetLatestJobsForRunner(ctx *gin.Context) {
+	userID := utils.GetUserIdFromContext(ctx)
+	if userID == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error":    consterrors.ErrNotLoggedIn.Error(),
+			"response": "",
+		})
+		return
+	}
+	runnerIDStr := ctx.Param("id")
+	if runnerIDStr == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrNoID.Error(),
+			"response": "",
+		})
+		return
+	}
+	runnerID, err := strconv.ParseInt(runnerIDStr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrNoID,
+			"response": "",
+		})
+		return
+	}
+	var numJobs int64
+	numJobsStr := ctx.Query("num_jobs")
+	if numJobsStr != "" {
+		numJobs, err = strconv.ParseInt(numJobsStr, 10, 64)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error":    consterrors.ErrInvalidNumJobs,
+				"response": "",
+			})
+			return
+		}
+	}
+	jobs := []jobsModel.Job{}
+	page := 0
+	for len(jobs) < int(numJobs) {
+		tmpJobs, err := jobsModel.GetRunnerJobs(uint(runnerID), userID, page, int(numJobs))
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error":    err.Error(),
+				"response": "",
+			})
+			return
+		}
+		if len(tmpJobs) == 0 {
+			break
+		}
+		jobs = append(jobs, tmpJobs...)
+		page++
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"error":    "",
+		"response": jobs,
+	})
+}
+
+func (rc RunnerController) AddRunnerForUser(ctx *gin.Context) {
 	userID := utils.GetUserIdFromContext(ctx)
 	if userID == "" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
@@ -97,7 +172,7 @@ func AddRunnerForUser(ctx *gin.Context) {
 		})
 		return
 	}
-	err = runners.AddRunnerForUser(gitClient, userID, args.IdRunner)
+	err = rc.rr.AddRunnerForUser(gitClient, userID, args.IdRunner)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
@@ -108,10 +183,9 @@ func AddRunnerForUser(ctx *gin.Context) {
 		"error":    "",
 		"response": "",
 	})
-
 }
 
-func TestGetJobsBetween(ctx *gin.Context) {
+func (rc RunnerController) TestGetJobsBetween(ctx *gin.Context) {
 	gitClient := utils.GetGitClientFromContext(ctx)
 	if gitClient == nil {
 		ctx.JSON(http.StatusOK, gin.H{
@@ -130,20 +204,6 @@ func TestGetJobsBetween(ctx *gin.Context) {
 		return
 	}
 
-	/* args := struct {
-		RunnerID  int       `json:"runner_id"`
-		StartDate time.Time `json:"start_date"`
-		EndDate   time.Time `json:"end_date"`
-	}{} */
-
-	/* err := ctx.BindJSON(&args)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":    err.Error(),
-			"response": "",
-		})
-		return
-	} */
 	startDate, err := time.Parse("2006-01-02", ctx.Query("start_date"))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{

@@ -84,6 +84,7 @@ func main() {
 	}))
 
 	oc := offers.NewOfferController(database.PublicDB)
+	rc := runners.NewRunnerController(database.PublicDB)
 	r.POST("/login", login.ValidateLogin)
 	r.POST("/register", users.Register)
 	r.GET("/validate_token", users.ValidateToken)
@@ -91,11 +92,13 @@ func main() {
 	authorized.Use(login.CheckLoginMidleware())
 	authorized.Use(um.SetGitClientMiddleware())
 	{
-		authorized.GET("/git_runners", runners.ListUserRunnersFromGit)
+		authorized.GET("/git_runners", rc.ListUserRunnersFromGit)
 		authorized.GET("/git_details", users.GetUserGitDetails)
 		authorized.POST("/git_details", users.UpdateUserGitDetails)
 		authorized.POST("/test_git_details", users.TestGitConnection)
-		authorized.GET("/test_get_jobs", runners.TestGetJobsBetween)
+		authorized.GET("/test_get_jobs", rc.TestGetJobsBetween)
+		authorized.GET("/runners", rc.ListUserRunners)
+		authorized.GET("/runners/:id/latest_jobs", rc.GetLatestJobsForRunner)
 		authorized.GET("/offers", oc.GetOffers)
 		authorized.POST("/offers", oc.CreateOffer)
 		authorized.PUT("/offers/:id", oc.UpdateOffer)
@@ -124,13 +127,6 @@ func main() {
 			})
 		})
 		authorized.GET("/get", func(c *gin.Context) {
-			/* userToken := c.GetString("user_git_token")
-			if userToken == "" {
-				c.JSON(500, gin.H{
-					"error": "No git token found in context",
-				})
-				return
-				} */
 			userID, exists := c.Get("user_id")
 			if !exists {
 				c.JSON(500, gin.H{
