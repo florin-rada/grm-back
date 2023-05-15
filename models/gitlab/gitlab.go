@@ -99,11 +99,97 @@ func GetJobsMaxPageForDate(client *gl.Client, runnerID int, endDate time.Time) (
 	}
 }
 
+/* func GetJobsMaxPageForDate(client *gl.Client, runnerID int, endDate time.Time) (int, error) {
+	fmt.Printf("\nGetJobsMaxPageForDate: Starting for RunnerID: %d endDate: %v", runnerID, endDate)
+	defer fmt.Printf("\nGetJobsMaxPageForDate: Ended for RunnerID: %d, endDate: %v", runnerID, endDate)
+	pageCounter := int(time.Since(endDate) / (24 * time.Hour))
+	perPage := 100
+	sortDirection := "desc"
+	orderBy := "id"
+	endDate = endDate.In(time.UTC).Truncate(time.Hour * 24)
+	for {
+		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
+			ListOptions: gl.ListOptions{
+				Page:    pageCounter,
+				PerPage: perPage,
+			},
+			OrderBy: &orderBy,
+			Sort:    &sortDirection,
+		})
+		if err != nil {
+			return 0, err
+		}
+		if len(tmpJobs) == 0 || tmpJobs[len(tmpJobs)-1].CreatedAt.In(time.UTC).Truncate(time.Hour*24).Before(endDate) {
+			return pageCounter, nil
+		}
+		pageCounter = pageCounter * 2
+	}
+} */
+
+// GetJobsTartegPage performs a binary search to find the page that has jobs
+// with CreatedAt between our start and end dates
+// It will return a page number that contains at least a job between
+// our target start and end dates
 // GetJobsTartegPage performs a binary search to find the page that has jobs
 // with CreatedAt between our start and end dates
 // It will return a page number that contains at least a job between
 // our target start and end dates
 func GetJobsTargetPage(client *gl.Client, runnerID, maxPage int, startDate time.Time, endDate time.Time) (int, error) {
+	fmt.Printf("GetJobsTargetPage started for RunnerID: %d, startDate: %v, endDate: %v", runnerID, startDate, endDate)
+	defer fmt.Printf("GetJobsTargetPage finished for RunnerID: %d, startDate: %v, endDate: %v", runnerID, startDate, endDate)
+	minPage := 1
+	orderBy := "id"
+	sortDirection := "desc"
+	prevMaxPage := minPage
+	prevMinPage := maxPage
+	for minPage <= maxPage {
+		currentPage := int((maxPage + minPage) / 2)
+		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
+			ListOptions: gl.ListOptions{
+				Page:    currentPage,
+				PerPage: 100,
+			},
+			OrderBy: &orderBy,
+			Sort:    &sortDirection,
+		})
+		if err != nil {
+			return 0, err
+		}
+
+		if len(tmpJobs) == 0 {
+			if maxPage == prevMaxPage && minPage == prevMinPage {
+				break
+			}
+			prevMaxPage = maxPage
+			maxPage = (currentPage - 1)
+			continue
+		}
+		if HaveJobBetweenDates(tmpJobs, startDate, endDate) {
+			return currentPage, nil
+		}
+		middleJobCreatedAt := tmpJobs[int(len(tmpJobs)/2)].CreatedAt.In(time.UTC).Truncate(time.Hour * 24)
+		if middleJobCreatedAt.After(endDate) {
+			if maxPage == prevMaxPage && minPage == prevMinPage {
+				break
+			}
+			prevMinPage = minPage
+			minPage = currentPage + 1
+
+			continue
+		}
+		if middleJobCreatedAt.Before(endDate) {
+			if maxPage == prevMaxPage && minPage == prevMinPage {
+				break
+			}
+			prevMaxPage = maxPage
+			maxPage = (currentPage - 1)
+			continue
+		}
+	}
+	return maxPage, nil
+}
+
+/* func GetJobsTargetPage(client *gl.Client, runnerID, maxPage int, startDate time.Time, endDate time.Time) (int, error) {
 	fmt.Printf("GetJobsTargetPage started for RunnerID: %d, startDate: %v, endDate: %v", runnerID, startDate, endDate)
 	defer fmt.Printf("GetJobsTargetPage finished for RunnerID: %d, startDate: %v, endDate: %v", runnerID, startDate, endDate)
 	minPage := int(maxPage / 2)
@@ -147,7 +233,7 @@ func GetJobsTargetPage(client *gl.Client, runnerID, maxPage int, startDate time.
 		}
 	}
 	return maxPage, nil
-}
+} */
 
 // GetJobsSince returns a list of all the jobs starting with startDate and to the present day
 func GetJobsSince(client *gl.Client, runnerID int, startDate *time.Time) ([]*gl.Job, error) {
@@ -424,27 +510,29 @@ nextPages:
 // Keep in mind, jobs are ordered descending by date, that means jobs[0].CreatedAt is newer
 // than jobs[len(jobs) - 1].CreatedAt
 // Todo: Improve by using a binary search if days > 1
+// Keep in mind, jobs are ordered descending by date, that means jobs[0].CreatedAt is newer
+// than jobs[len(jobs) - 1].CreatedAt
 func HaveJobBetweenDates(jobs []*gl.Job, startDate time.Time, endDate time.Time) bool {
 	if len(jobs) == 0 {
 		return false
 	}
 	// making sure the dates are truncated to 24 hours so we only have the date to compare
-	startDate = startDate.In(time.UTC).Truncate(time.Hour * 24)
-	endDate = endDate.In(time.UTC).Truncate(time.Hour * 24)
-	first := jobs[0].CreatedAt.In(time.UTC).Truncate(time.Hour * 24)
-	last := jobs[len(jobs)-1].CreatedAt.In(time.UTC).Truncate(time.Hour * 24)
-	daysOnPage := int(first.Sub(last).Hours() / 24)
-	if daysOnPage == 0 {
+	startDate = startDate.Truncate(time.Hour * 24)
+	endDate = endDate.Truncate(time.Hour * 24)
+	first := jobs[0].CreatedAt.Truncate(time.Hour * 24)
+	last := jobs[len(jobs)-1].CreatedAt.Truncate(time.Hour * 24)
+	days := int(first.Sub(last).Hours() / 24)
+	if days == 0 {
 		return (first.Equal(startDate) || first.After(startDate)) && (first.Equal(endDate) || first.Before(endDate))
 	}
-	if daysOnPage == 1 {
+	if days == 1 {
 		return ((first.Equal(startDate) || first.After(startDate)) &&
 			(first.Equal(endDate) || first.Before(endDate))) || ((last.Equal(startDate) || last.After(startDate)) &&
 			(last.Equal(endDate) || last.Before(endDate)))
 	}
-	if daysOnPage > 1 {
+	if days > 1 {
 		for _, job := range jobs {
-			jobCreatedAt := job.CreatedAt.In(time.UTC).Truncate(time.Hour * 24)
+			jobCreatedAt := job.CreatedAt.Truncate(time.Hour * 24)
 			if (jobCreatedAt.Equal(startDate) || jobCreatedAt.After(startDate)) && (jobCreatedAt.Equal(endDate) || jobCreatedAt.Before(endDate)) {
 				return true
 			}
@@ -452,7 +540,6 @@ func HaveJobBetweenDates(jobs []*gl.Job, startDate time.Time, endDate time.Time)
 	}
 	return false
 }
-
 func GetClient(baseUrl string, token string) (*gl.Client, error) {
 	client, err := gl.NewClient(token, gl.WithBaseURL(baseUrl))
 	if err != nil {
@@ -503,6 +590,45 @@ func GetAverageDaysPerPage(client *gl.Client, runnerID int) (float64, error) {
 
 	}
 	return 0, nil
+}
+
+func GetMinMaxUnsyncedDates(runnerID int, startDate *time.Time, endDate *time.Time) (*time.Time, *time.Time, error) {
+	if startDate == nil || endDate == nil {
+		return nil, nil, errors.New("no start date or end date")
+	}
+
+	syncedDates := []SyncedDate{}
+	resp := utils.DB.Model(&SyncedDate{}).Where("(synced_date BETWEEN ? and ?) and runner_id= ?", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"), runnerID).Order("synced_date desc").Find(&syncedDates)
+	if resp.Error != nil {
+		return nil, nil, resp.Error
+	}
+	if len(syncedDates) == 0 {
+		return startDate, endDate, nil
+	}
+
+	notSyncedDates := []time.Time{}
+	currentDate := *startDate
+	for endDate.Before(currentDate) {
+		for _, date := range syncedDates {
+			tmpDate := time.Time(date.SyncedDate)
+			found := false
+			if tmpDate.Year() == currentDate.Year() ||
+				tmpDate.Month() == currentDate.Month() ||
+				tmpDate.Day() == currentDate.Day() {
+				found = true
+			}
+
+			if !found {
+				notSyncedDates = append(notSyncedDates, currentDate)
+			}
+			currentDate = currentDate.Add(time.Hour * -24)
+		}
+	}
+	if len(notSyncedDates) == 0 {
+		return nil, nil, nil
+	}
+
+	return &notSyncedDates[0], &notSyncedDates[len(notSyncedDates)-1], nil
 }
 
 func UpdateRunner(client *gl.Client, id uint, runner *gl.UpdateRunnerDetailsOptions) error {
