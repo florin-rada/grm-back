@@ -92,6 +92,14 @@ func (rc RunnerController) GetLatestJobsForRunner(ctx *gin.Context) {
 		})
 		return
 	}
+	client := utils.GetGitClientFromContext(ctx)
+	if client == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrNoGitClient,
+			"response": "",
+		})
+		return
+	}
 	runnerIDStr := ctx.Param("id")
 	if runnerIDStr == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -122,8 +130,9 @@ func (rc RunnerController) GetLatestJobsForRunner(ctx *gin.Context) {
 	}
 	jobs := []jobsModel.Job{}
 	page := 0
+	jm := jobsModel.NewJobsModel(rc.db, client)
 	for len(jobs) < int(numJobs) {
-		tmpJobs, err := jobsModel.GetRunnerJobs(uint(runnerID), userID, page, int(numJobs))
+		tmpJobs, err := jm.GetRunnerJobs(uint(runnerID), userID, page, int(numJobs))
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
 				"error":    err.Error(),

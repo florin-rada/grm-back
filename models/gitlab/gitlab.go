@@ -99,33 +99,6 @@ func GetJobsMaxPageForDate(client *gl.Client, runnerID int, endDate time.Time) (
 	}
 }
 
-/* func GetJobsMaxPageForDate(client *gl.Client, runnerID int, endDate time.Time) (int, error) {
-	fmt.Printf("\nGetJobsMaxPageForDate: Starting for RunnerID: %d endDate: %v", runnerID, endDate)
-	defer fmt.Printf("\nGetJobsMaxPageForDate: Ended for RunnerID: %d, endDate: %v", runnerID, endDate)
-	pageCounter := int(time.Since(endDate) / (24 * time.Hour))
-	perPage := 100
-	sortDirection := "desc"
-	orderBy := "id"
-	endDate = endDate.In(time.UTC).Truncate(time.Hour * 24)
-	for {
-		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-			ListOptions: gl.ListOptions{
-				Page:    pageCounter,
-				PerPage: perPage,
-			},
-			OrderBy: &orderBy,
-			Sort:    &sortDirection,
-		})
-		if err != nil {
-			return 0, err
-		}
-		if len(tmpJobs) == 0 || tmpJobs[len(tmpJobs)-1].CreatedAt.In(time.UTC).Truncate(time.Hour*24).Before(endDate) {
-			return pageCounter, nil
-		}
-		pageCounter = pageCounter * 2
-	}
-} */
-
 // GetJobsTartegPage performs a binary search to find the page that has jobs
 // with CreatedAt between our start and end dates
 // It will return a page number that contains at least a job between
@@ -188,52 +161,6 @@ func GetJobsTargetPage(client *gl.Client, runnerID, maxPage int, startDate time.
 	}
 	return maxPage, nil
 }
-
-/* func GetJobsTargetPage(client *gl.Client, runnerID, maxPage int, startDate time.Time, endDate time.Time) (int, error) {
-	fmt.Printf("GetJobsTargetPage started for RunnerID: %d, startDate: %v, endDate: %v", runnerID, startDate, endDate)
-	defer fmt.Printf("GetJobsTargetPage finished for RunnerID: %d, startDate: %v, endDate: %v", runnerID, startDate, endDate)
-	minPage := int(maxPage / 2)
-	orderBy := "id"
-	sortDirection := "desc"
-	prevMaxPage := minPage
-	prevMinPage := maxPage
-	for minPage <= maxPage {
-		currentPage := int((maxPage + minPage) / 2)
-		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-			ListOptions: gl.ListOptions{
-				Page:    currentPage,
-				PerPage: 100,
-			},
-			OrderBy: &orderBy,
-			Sort:    &sortDirection,
-		})
-		if err != nil {
-			return 0, err
-		}
-		if len(tmpJobs) == 0 {
-			return currentPage, nil
-		}
-		if HaveJobBetweenDates(tmpJobs, startDate, endDate) {
-			return currentPage, nil
-		}
-		middleJobCreatedAt := tmpJobs[int(len(tmpJobs)/2)].CreatedAt.In(time.UTC).Truncate(time.Hour * 24)
-		if middleJobCreatedAt.After(endDate) {
-			minPage = currentPage + 1
-			if maxPage == prevMaxPage && minPage == prevMinPage {
-				break
-			}
-			continue
-		}
-		if middleJobCreatedAt.Before(endDate) {
-			maxPage = (currentPage - 1)
-			if maxPage == prevMaxPage && minPage == prevMinPage {
-				break
-			}
-			continue
-		}
-	}
-	return maxPage, nil
-} */
 
 // GetJobsSince returns a list of all the jobs starting with startDate and to the present day
 func GetJobsSince(client *gl.Client, runnerID int, startDate *time.Time) ([]*gl.Job, error) {
@@ -354,27 +281,6 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 		if err != nil {
 			return nil, err
 		}
-		/* found := false
-		counter := 1
-		maxPage = 1
-		for !found {
-			tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-				ListOptions: gl.ListOptions{
-					Page:    numDaysSinceEndDate * counter,
-					PerPage: perPage,
-				},
-				OrderBy: &orderBy,
-				Sort:    &sortDir,
-			})
-			if err != nil {
-				return nil, err
-			}
-			if len(tmpJobs) == 0 || tmpJobs[len(tmpJobs)-1].CreatedAt.Truncate(time.Hour*24).Before(*endDate) {
-				found = true
-				maxPage = numDaysSinceEndDate*counter - 1
-				break
-			}
-		} */
 	}
 	fmt.Printf("Starting binary search for our targeted dates")
 
@@ -382,39 +288,7 @@ func GetJobsBetween(client *gl.Client, runnerID int, startDate *time.Time, endDa
 	if err != nil {
 		return nil, err
 	}
-	/* for minPage <= maxPage {
-		currentPage := int((maxPage + minPage) / 2)
-		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-			ListOptions: gl.ListOptions{
-				Page:    currentPage,
-				PerPage: perPage,
-			},
-			OrderBy: &orderBy,
-			Sort:    &sortDir,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if len(tmpJobs) == 0 {
-			maxPage = currentPage
-			continue
-		}
-		// we found a job between our days
-		if HaveJobBetweenDates(tmpJobs, *startDate, *endDate) {
-			break
-		}
-		middleJob := tmpJobs[int(len(tmpJobs)/2)]
-		// check if date is in right side (older)
-		if middleJob.CreatedAt.Truncate(time.Hour * 24).After(*endDate) {
-			minPage = currentPage + 1
-			continue
-		}
-		// check if date is on left side (newer)
-		if middleJob.CreatedAt.Truncate(time.Hour * 24).Before(*endDate) {
-			maxPage = currentPage - 1
-			continue
-		}
-	} */
+
 	fmt.Printf("Finished binary search for targeted dates, maxPage is : %d", maxPage)
 	// going backward maxPage-- and adding all jobs
 	fmt.Printf("starting get jobs newer than end date")
@@ -504,7 +378,6 @@ nextPages:
 	}
 	fmt.Printf("Finished sorting of jobs")
 	return jobs, nil
-
 }
 
 // Keep in mind, jobs are ordered descending by date, that means jobs[0].CreatedAt is newer
@@ -540,95 +413,13 @@ func HaveJobBetweenDates(jobs []*gl.Job, startDate time.Time, endDate time.Time)
 	}
 	return false
 }
+
 func GetClient(baseUrl string, token string) (*gl.Client, error) {
 	client, err := gl.NewClient(token, gl.WithBaseURL(baseUrl))
 	if err != nil {
 		return nil, err
 	}
 	return client, nil
-}
-
-func GetAverageDaysPerPage(client *gl.Client, runnerID int) (float64, error) {
-	var finished bool
-	var count int = 1
-	//var pages float64
-	jobs := []*gl.Job{}
-	for finished && count < 15 {
-		tmpJobs, _, err := client.Runners.ListRunnerJobs(runnerID, &gl.ListRunnerJobsOptions{
-			ListOptions: gl.ListOptions{
-				Page:    count,
-				PerPage: 100,
-			},
-		})
-		if err != nil {
-			return 0, err
-		}
-		jobs = append(jobs, tmpJobs...)
-		today := time.Now().Truncate(24 * time.Hour)
-		lastJob := tmpJobs[len(tmpJobs)-1]
-		lastJobCreatedAt := lastJob.CreatedAt.Truncate(24 * time.Hour)
-		timeDiff := today.Sub(lastJobCreatedAt).Hours()
-
-		if timeDiff > 48 { // if difference is greater than 48 hours, we loop backwards on the received jobs until we find this
-
-		} else if timeDiff == 48 { // if we have 48 hours, we go back until we get 24 hours difference and than start counting untill we reach today
-			var numJobs int
-			for i := len(jobs) - 1; i >= 0; i-- {
-				tmpTimeDiff := today.Sub(jobs[i].CreatedAt.Truncate(24 * time.Hour)).Hours()
-				if tmpTimeDiff < 24 && tmpTimeDiff > 0 {
-					numJobs++
-				}
-				if tmpTimeDiff <= 0 {
-					if count == 1 {
-
-					}
-				}
-			}
-		} else if timeDiff < 48 { // we continue to load another page
-			continue
-		}
-
-	}
-	return 0, nil
-}
-
-func GetMinMaxUnsyncedDates(runnerID int, startDate *time.Time, endDate *time.Time) (*time.Time, *time.Time, error) {
-	if startDate == nil || endDate == nil {
-		return nil, nil, errors.New("no start date or end date")
-	}
-
-	syncedDates := []SyncedDate{}
-	resp := utils.DB.Model(&SyncedDate{}).Where("(synced_date BETWEEN ? and ?) and runner_id= ?", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"), runnerID).Order("synced_date desc").Find(&syncedDates)
-	if resp.Error != nil {
-		return nil, nil, resp.Error
-	}
-	if len(syncedDates) == 0 {
-		return startDate, endDate, nil
-	}
-
-	notSyncedDates := []time.Time{}
-	currentDate := *startDate
-	for endDate.Before(currentDate) {
-		for _, date := range syncedDates {
-			tmpDate := time.Time(date.SyncedDate)
-			found := false
-			if tmpDate.Year() == currentDate.Year() ||
-				tmpDate.Month() == currentDate.Month() ||
-				tmpDate.Day() == currentDate.Day() {
-				found = true
-			}
-
-			if !found {
-				notSyncedDates = append(notSyncedDates, currentDate)
-			}
-			currentDate = currentDate.Add(time.Hour * -24)
-		}
-	}
-	if len(notSyncedDates) == 0 {
-		return nil, nil, nil
-	}
-
-	return &notSyncedDates[0], &notSyncedDates[len(notSyncedDates)-1], nil
 }
 
 func UpdateRunner(client *gl.Client, id uint, runner *gl.UpdateRunnerDetailsOptions) error {

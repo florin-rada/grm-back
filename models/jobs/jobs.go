@@ -1,14 +1,29 @@
 package jobs
 
 import (
+	consterrors "back/const_errors"
 	db "back/database"
-	"errors"
+	"back/models/gitlab"
+	"back/models/synchronized"
 	"fmt"
 	"time"
 
 	gl "github.com/xanzy/go-gitlab"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+type JobsModel struct {
+	db     *gorm.DB
+	client *gl.Client
+}
+
+func NewJobsModel(db *gorm.DB, client *gl.Client) *JobsModel {
+	return &JobsModel{
+		db:     db,
+		client: client,
+	}
+}
 
 // Job represents a internal row of a job
 type Job struct {
@@ -54,7 +69,7 @@ func (jqi JobsQueueItem) ExecuteTask() {
 	jqi.Task()
 }
 
-func (j *Job) Save() error {
+/* func (j *Job) Save() error {
 	if j.InternalUserId <= 0 {
 		return errors.New("Error, User id must be greater than 0")
 	}
@@ -68,11 +83,11 @@ func (j *Job) Save() error {
 		return resp.Error
 	}
 	return nil
-}
+} */
 
 func TranslateGLJobToJob(gljob *gl.Job) (*Job, error) {
 	if gljob == nil {
-		return &Job{}, errors.New("Invalid gitlab job received")
+		return &Job{}, consterrors.ErrInvalidGitlabJob
 	}
 	j := Job{
 		ID:             gljob.ID,
@@ -92,8 +107,8 @@ func TranslateGLJobToJob(gljob *gl.Job) (*Job, error) {
 	return &j, nil
 }
 
-func GetRunnerJobs(idRunner uint, idUser string, page int, perPage int) ([]Job, error) {
-	tr := db.PublicDB.Model(&Job{})
+func (jm JobsModel) GetRunnerJobs(idRunner uint, idUser string, page int, perPage int) ([]Job, error) {
+	tr := jm.db.Model(&Job{})
 	tr = tr.Where("runner_id=?", idRunner)
 	tr = tr.Where("internal_user_id=?", idUser)
 	if perPage < 0 {
@@ -110,8 +125,8 @@ func GetRunnerJobs(idRunner uint, idUser string, page int, perPage int) ([]Job, 
 	return jobs, nil
 }
 
-func SearchRunnerJobs(idRunner uint, idUser string, params JobSearchArgs) ([]Job, error) {
-	tr := db.PublicDB.Model(&Job{})
+func (jm JobsModel) SearchRunnerJobs(idRunner uint, idUser string, params JobSearchArgs) ([]Job, error) {
+	tr := jm.db.Model(&Job{})
 	tr = tr.Where("runner_id=?", idRunner)
 	tr = tr.Where("internal_user_id=?", idUser)
 
@@ -167,6 +182,57 @@ func SearchRunnerJobs(idRunner uint, idUser string, params JobSearchArgs) ([]Job
 		return []Job{}, resp.Error
 	}
 	return jobs, nil
+}
+
+func (jm JobsModel) SyncJobsBetweenDates(client *gl.Client, userID int, runnerID int, startDate *time.Time, endDate *time.Time) error {
+	if client == nil {
+		return consterrors.ErrNoGitClient
+	}
+	if startDate == nil || endDate == nil {
+		return consterrors.ErrNoStartOrEndDate
+	}
+	truncatedStartDate := startDate.In(time.UTC).Truncate(time.Hour * 24)
+	truncatedEndDate := endDate.In(time.UTC).Truncate(time.Hour * 24)
+
+	if truncatedStartDate.After(truncatedEndDate) {
+		truncatedStartDate, truncatedEndDate = truncatedEndDate, truncatedStartDate
+	}
+	sm := synchronized.NewSynchronizedModel(jm.db)
+	notSyncedStartDate, notSyncedEndDate, err := sm.GetMinMaxUnsyncedDates(userID, runnerID, &truncatedStartDate, &truncatedEndDate)
+	if err != nil {
+		return err
+	}
+	if notSyncedStartDate == nil && notSyncedEndDate == nil {
+		return nil
+	}
+
+	gljobs, err := gitlab.GetJobsBetween(jm.client, runnerID, notSyncedStartDate, notSyncedEndDate)
+	if err != nil {
+		return err
+	}
+	if len(gljobs) == 0 {
+		return nil
+	}
+	jobs := make([]Job, 0, len(gljobs))
+	for _, job := range gljobs {
+		translated, err := TranslateGLJobToJob(job)
+		if err != nil {
+			return err
+		}
+		jobs = append(jobs, *translated)
+	}
+	resp := jm.db.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(jobs)
+	if resp.Error != nil {
+		return resp.Error
+	}
+	err = sm.SaveSyncedDates(userID, runnerID, *notSyncedStartDate, *notSyncedEndDate)
+	if err != nil {
+		return nil
+	}
+	return nil
+
 }
 
 func init() {

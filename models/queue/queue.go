@@ -29,8 +29,8 @@ func executor() {
 }
 
 func init() {
-	queue = make(chan QueueItem, runtime.NumCPU()*100)
-	for i := 0; i < runtime.NumCPU(); i++ {
+	queue = make(chan QueueItem, runtime.NumCPU()*1000)
+	for i := 0; i < runtime.NumCPU()*10; i++ {
 		go executor()
 	}
 
