@@ -61,14 +61,6 @@ type JobSearchArgs struct {
 	PerPage         int        `json:"per_page,omitempty"`
 }
 
-type JobsQueueItem struct {
-	Task func()
-}
-
-func (jqi JobsQueueItem) ExecuteTask() {
-	jqi.Task()
-}
-
 /* func (j *Job) Save() error {
 	if j.InternalUserId <= 0 {
 		return errors.New("Error, User id must be greater than 0")

@@ -8,6 +8,7 @@ import (
 	"back/utils"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -163,7 +164,7 @@ func (rc RunnerController) AddRunnerForUser(ctx *gin.Context) {
 		return
 	}
 	args := struct {
-		IdRunner int
+		IdRunner int `json:"git_id_runner"`
 	}{}
 	err := ctx.BindJSON(&args)
 	if err != nil {
@@ -191,6 +192,146 @@ func (rc RunnerController) AddRunnerForUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"error":    "",
 		"response": "",
+	})
+}
+
+func (rc RunnerController) UpdateRunner(ctx *gin.Context) {
+	client := utils.GetGitClientFromContext(ctx)
+	if client == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrNoGitClient,
+			"response": "",
+		})
+		return
+	}
+	userID := utils.GetUserIdFromContext(ctx)
+	if userID == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error":    consterrors.ErrNotLoggedIn.Error(),
+			"response": "",
+		})
+		return
+	}
+	runnerIDStr := ctx.Param("id")
+	if runnerIDStr == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrNoID.Error(),
+			"response": "",
+		})
+		return
+	}
+	runnerID, err := strconv.ParseInt(runnerIDStr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrInvalidID.Error(),
+			"response": "",
+		})
+		return
+	}
+
+	r, err := rc.rr.GetRunner(uint(runnerID))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+
+	args := struct {
+		Description    *string   `url:"description,omitempty" json:"description,omitempty"`
+		Paused         *bool     `url:"paused,omitempty" json:"paused,omitempty"`
+		TagList        *[]string `url:"tag_list[],omitempty" json:"tag_list,omitempty"`
+		RunUntagged    *bool     `url:"run_untagged,omitempty" json:"run_untagged,omitempty"`
+		MaximumTimeout *int      `url:"maximum_timeout,omitempty" json:"maximum_timeout,omitempty"`
+		MaxConcurrent  *int      `url:"max_concurrent,omitempty" json:"max_concurrent,omitempty"`
+	}{}
+	err = ctx.BindJSON(&args)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	if args.Description != nil {
+		r.Description = *args.Description
+	}
+	if args.Paused != nil {
+		r.Paused = *args.Paused
+	}
+	if args.TagList != nil {
+		r.TagList = strings.Join(*args.TagList, ",")
+	}
+	if args.RunUntagged != nil {
+		r.RunUntagged = *args.RunUntagged
+	}
+	if args.MaximumTimeout != nil {
+		r.MaximumTimeout = *args.MaximumTimeout
+	}
+	if args.MaxConcurrent != nil {
+		r.MaxConcurrent = *args.MaxConcurrent
+	}
+	err = rc.rr.UpdateRunnerOnGit(client, r)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	err = rc.rr.UpdateRunner(r)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"error":    "",
+		"response": "OK",
+	})
+
+}
+
+func (rc RunnerController) GetRunnerDetails(ctx *gin.Context) {
+	userID := utils.GetUserIdFromContext(ctx)
+	if userID == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error":    consterrors.ErrNotLoggedIn.Error(),
+			"response": "",
+		})
+		return
+	}
+	runnerIDStr := ctx.Param("id")
+	if runnerIDStr == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrNoID.Error(),
+			"response": "",
+		})
+		return
+	}
+	runnerID, err := strconv.ParseInt(runnerIDStr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrInvalidID.Error(),
+			"response": "",
+		})
+		return
+	}
+	r, err := rc.rr.GetRunner(uint(runnerID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"error":    "",
+		"response": r,
 	})
 }
 

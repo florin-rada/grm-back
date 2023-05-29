@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xanzy/go-gitlab"
 	gl "github.com/xanzy/go-gitlab"
 	"gorm.io/gorm"
 )
@@ -73,14 +74,25 @@ func (rr RunnerRepository) GetRunner(runnerID uint) (Runner, error) {
 	return r, nil
 }
 
-func (rr RunnerRepository) UpdateRunnerOnGit(r Runner) error {
-	return nil
+func (rr RunnerRepository) UpdateRunnerOnGit(client *gitlab.Client, r Runner) error {
+
+	tagListArray := strings.Split(r.TagList, ",")
+	_, _, err := client.Runners.UpdateRunnerDetails(r.ID, &gl.UpdateRunnerDetailsOptions{
+		Description:    &r.Description,
+		Paused:         &r.Paused,
+		TagList:        &tagListArray,
+		RunUntagged:    &r.RunUntagged,
+		MaximumTimeout: &r.MaximumTimeout,
+	})
+	return err
 }
 
 func (rr RunnerRepository) UpdateRunner(r Runner) error {
-	return nil
+	resp := rr.db.Save(r)
+	return resp.Error
 }
 
+// GetUserRunners returns a list of the user's runners extracted from the local database
 func (rr RunnerRepository) GetUserRunners(userID string) ([]Runner, error) {
 	r := []Runner{}
 	resp := rr.db.Where("internal_user_id=?", userID).Find(&r)
@@ -90,6 +102,9 @@ func (rr RunnerRepository) GetUserRunners(userID string) ([]Runner, error) {
 	return r, nil
 }
 
+// AddRunnerForUser stores a runner's details to the local database
+// it accepts the runnerID and based on this, takes the runner details from gitlab
+// than stores the relevant runner details to the database
 func (rr RunnerRepository) AddRunnerForUser(client *gl.Client, userID string, runnerId int) error {
 	if client == nil {
 		return consterrors.ErrNoGitClient
