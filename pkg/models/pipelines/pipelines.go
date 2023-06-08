@@ -1,7 +1,7 @@
 package pipelines
 
 import (
-	db "back/database"
+	db "back/pkg/database"
 	"errors"
 	"fmt"
 	"time"

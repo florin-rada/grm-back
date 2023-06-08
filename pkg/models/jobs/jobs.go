@@ -27,8 +27,8 @@ func NewJobsModel(db *gorm.DB, client *gl.Client) *JobsModel {
 
 // Job represents a internal row of a job
 type Job struct {
-	InternalUserId int       `json:"internal_user_id,omitempty" gorm:"internal_user_id,unique"`
-	ID             int       `json:"id" gorm:"id,unique" `
+	InternalUserId int       `json:"internal_user_id,omitempty" gorm:"internal_user_id,unique,index"`
+	ID             int       `json:"id" gorm:"id,unique,index" `
 	Name           string    `json:"name" gorm:"name"`
 	CreatedAt      time.Time `json:"created_at" gorm:"created_at"`
 	StartedAt      time.Time `json:"started_at" gorm:"started_at"`
@@ -62,21 +62,16 @@ type JobSearchArgs struct {
 	Status          string     `json:"status,omitempty"`
 }
 
-/* func (j *Job) Save() error {
-	if j.InternalUserId <= 0 {
-		return errors.New("Error, User id must be greater than 0")
-	}
-	if j.ID <= 0 {
-		return errors.New("Error, Job ID must be greater than 0")
-	}
-	resp := db.PublicDB.Clauses(clause.OnConflict{
-		UpdateAll: true,
-	}).Create(&j)
-	if resp.Error != nil {
-		return resp.Error
-	}
-	return nil
-} */
+type StatisticsSearchArgs struct {
+	Names          []string   `json:"names,omitempty"`
+	CreatedAtStart *time.Time `json:"created_at_start"`
+	CreatedAtEnd   *time.Time `json:"created_at_end"`
+	RunnerIDs      []int      `json:"runner_ids,omitempty"`
+	ProjectIDs     []int      `json:"project_id,omitempty"`
+	Branches       []string   `json:"branches,omitempty"`
+	Statuses       []string   `json:"statuses,omitempty"`
+	//Stage          string     `json:"stage,omitempty"`
+}
 
 func TranslateGLJobToJob(gljob *gl.Job) (*Job, error) {
 	if gljob == nil {
@@ -118,10 +113,59 @@ func (jm JobsModel) GetRunnerJobs(idRunner uint, idUser string, page int, perPag
 	return jobs, nil
 }
 
-func (jm JobsModel) SearchRunnerJobs(idRunner uint, idUser string, params JobSearchArgs) ([]Job, error) {
+func (jm JobsModel) SearchJobsForStatistics(userID string, params StatisticsSearchArgs) ([]Job, error) {
+	tr := jm.db.Model(&Job{})
+	tr = tr.Where("internal_user_id=?", userID)
+
+	if len(params.Names) == 1 {
+		tr = tr.Where("name = ?", params.Names[0])
+	} else if len(params.Names) > 1 {
+		tr = tr.Where("name = ? ", params.Names)
+	}
+
+	if params.CreatedAtStart != nil && params.CreatedAtEnd == nil {
+		tr = tr.Where("created_at >= ? ", &params.CreatedAtStart)
+	} else if params.CreatedAtStart != nil && params.CreatedAtEnd != nil {
+		tr = tr.Where("created_at BETWEEN ? AND ?", &params.CreatedAtStart, &params.CreatedAtEnd)
+	} else if params.CreatedAtStart == nil && params.CreatedAtEnd != nil {
+		tr = tr.Where("created_at <= ? ", &params.CreatedAtEnd)
+	}
+	if len(params.RunnerIDs) == 1 {
+		tr = tr.Where("runner_id = ? ", params.RunnerIDs[0])
+	} else if len(params.RunnerIDs) > 1 {
+		tr = tr.Where("runner_id IN ?", params.RunnerIDs)
+	}
+
+	if len(params.ProjectIDs) == 1 {
+		tr = tr.Where("project_id = ? ", params.ProjectIDs[0])
+	} else if len(params.ProjectIDs) > 1 {
+		tr = tr.Where("project_id IN ?", params.ProjectIDs)
+	}
+
+	if len(params.Branches) == 1 {
+		tr = tr.Where("branch = ?", params.Branches[0])
+	} else if len(params.Branches) > 1 {
+		tr = tr.Where("branch = ?", params.Branches)
+	}
+
+	if len(params.Statuses) == 1 {
+		tr = tr.Where("status = ?", params.Statuses[0])
+	} else if len(params.Statuses) > 1 {
+		tr = tr.Where("status = ? ", params.Statuses)
+	}
+
+	jobs := []Job{}
+	resp := tr.Find(&jobs)
+	if resp.Error != nil {
+		return []Job{}, resp.Error
+	}
+	return jobs, nil
+}
+
+func (jm JobsModel) SearchRunnerJobs(idRunner uint, userID string, params JobSearchArgs) ([]Job, error) {
 	tr := jm.db.Model(&Job{})
 	tr = tr.Where("runner_id=?", idRunner)
-	tr = tr.Where("internal_user_id=?", idUser)
+	tr = tr.Where("internal_user_id=?", userID)
 
 	if params.Name != "" {
 		tr = tr.Where("name Like ?", fmt.Sprintf("%%%s%%", params.Name))
@@ -225,7 +269,6 @@ func (jm JobsModel) SyncJobsBetweenDates(client *gl.Client, userID int, runnerID
 		return nil
 	}
 	return nil
-
 }
 
 func init() {

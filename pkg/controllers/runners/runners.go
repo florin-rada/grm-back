@@ -440,6 +440,68 @@ func (rc RunnerController) GetRunnerDetails(ctx *gin.Context) {
 	})
 }
 
+func (rc RunnerController) GetStatisticsData(ctx *gin.Context) {
+	gitClient := utils.GetGitClientFromContext(ctx)
+	if gitClient == nil {
+		ctx.JSON(http.StatusOK, gin.H{
+			"error":    consterrors.ErrNoGitToken.Error(),
+			"response": "",
+		})
+		return
+	}
+
+	userID := utils.GetUserIdFromContext(ctx)
+	if userID == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error":    consterrors.ErrNotLoggedIn.Error(),
+			"response": "",
+		})
+		return
+	}
+	args := jobsModel.StatisticsSearchArgs{}
+	err := ctx.BindJSON(&args)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	truncated := args.CreatedAtStart.In(time.UTC).Truncate(time.Hour * 24)
+	args.CreatedAtStart = &truncated
+	truncated = args.CreatedAtEnd.In(time.UTC).Truncate(time.Hour * 24)
+	args.CreatedAtEnd = &truncated
+
+	if args.CreatedAtStart.After(time.Now()) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    "date after today",
+			"response": "",
+		})
+		return
+	}
+	if args.CreatedAtEnd.After(time.Now()) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    "date after today",
+			"response": "",
+		})
+		return
+	}
+	jm := jobsModel.NewJobsModel(rc.db, gitClient)
+
+	jobs, err := jm.SearchJobsForStatistics(userID, args)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":    err.Error(),
+			"response": "",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"error":    "",
+		"response": jobs,
+	})
+}
+
 func (rc RunnerController) TestGetJobsBetween(ctx *gin.Context) {
 	gitClient := utils.GetGitClientFromContext(ctx)
 	if gitClient == nil {
