@@ -27,7 +27,7 @@ func NewJobsModel(db *gorm.DB, client *gl.Client) *JobsModel {
 
 // Job represents a internal row of a job
 type Job struct {
-	InternalUserId int       `json:"internal_user_id,omitempty" gorm:"internal_user_id,unique,index"`
+	InternalUserId string    `json:"internal_user_id,omitempty" gorm:"internal_user_id,unique,index"`
 	ID             int       `json:"id" gorm:"id,unique,index" `
 	Name           string    `json:"name" gorm:"name"`
 	CreatedAt      time.Time `json:"created_at" gorm:"created_at"`
