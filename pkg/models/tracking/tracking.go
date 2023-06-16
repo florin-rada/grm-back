@@ -1,6 +1,7 @@
 package tracking
 
 import (
+	"back/pkg/database"
 	"fmt"
 	"math"
 	"time"
@@ -19,10 +20,11 @@ const (
 )
 
 type Event struct {
-	ID        int       `gorm:"id,autoincrement,primarykey,unique,index"`
+	ID        uint      `gorm:"id,autoincrement,primarykey,unique,index"`
 	UUID      string    `gorm:"uuid,index"`
 	Action    EventType `gorm:"action"`
 	Target    string    `gorm:"target"`
+	Referrer  string    `gorm:"referrer"`
 	Timestamp time.Time `gorm:"timestamp,autoCreateTime"`
 }
 
@@ -32,31 +34,32 @@ type Visitor struct {
 	Country string `gorm:"country"`
 }
 
-type TrackingModel struct {
+type TrackingRepository struct {
 	db *gorm.DB
 }
 
-func NewTrackingModel(db *gorm.DB) TrackingModel {
-	return TrackingModel{
+func NewTrackingRepository(db *gorm.DB) *TrackingRepository {
+	return &TrackingRepository{
 		db: db,
 	}
 }
 
-func (tm TrackingModel) AddEvent(UUID string, Action EventType, Target string) error {
+func (tm TrackingRepository) AddEvent(UUID string, Action EventType, Target string, Referer string) error {
 	e := Event{
 		UUID:      UUID,
 		Action:    Action,
 		Target:    Target,
 		Timestamp: time.Now(),
+		Referrer:  Referer,
 	}
-	resp := tm.db.Create(e)
+	resp := tm.db.Create(&e)
 	if resp.Error != nil {
 		return resp.Error
 	}
 	return nil
 }
 
-func (tm TrackingModel) GetConversionRate(startTime *time.Time, endTime *time.Time) (uniqueVisitors int, totalRegistered int, convRate float64, err error) {
+func (tm TrackingRepository) GetConversionRate(startTime *time.Time, endTime *time.Time) (uniqueVisitors int, totalRegistered int, convRate float64, err error) {
 	if startTime == nil {
 		startTimeTmp := time.Now().In(time.UTC).Add(time.Hour * 24 * -30)
 		startTime = &startTimeTmp
@@ -83,7 +86,7 @@ func (tm TrackingModel) GetConversionRate(startTime *time.Time, endTime *time.Ti
 	return uniqueVisitors, totalRegistered, convRate, err
 }
 
-func (tm TrackingModel) GetEvents(UUID string, action EventType, target string, startTime *time.Time, endTime *time.Time, page int, perPage int) ([]Event, error) {
+func (tm TrackingRepository) GetEvents(UUID string, action EventType, target string, startTime *time.Time, endTime *time.Time, page int, perPage int) ([]Event, error) {
 	tr := tm.db.Model(&Event{})
 
 	if UUID != "" {
@@ -122,7 +125,7 @@ func (tm TrackingModel) GetEvents(UUID string, action EventType, target string, 
 	return events, nil
 }
 
-func (tm TrackingModel) AddVisitor(UUID string, IP string, country string) error {
+func (tm TrackingRepository) AddVisitor(UUID string, IP string, country string) error {
 	v := Visitor{
 		UUID:    UUID,
 		IP:      IP,
@@ -138,7 +141,7 @@ func (tm TrackingModel) AddVisitor(UUID string, IP string, country string) error
 	return nil
 }
 
-func (tm TrackingModel) GetVisitors(startTime *time.Time, endTime *time.Time, page int, perPage int) ([]Visitor, error) {
+func (tm TrackingRepository) GetVisitors(startTime *time.Time, endTime *time.Time, page int, perPage int) ([]Visitor, error) {
 	tr := tm.db.Model(&Visitor{})
 
 	if startTime == nil {
@@ -164,4 +167,11 @@ func (tm TrackingModel) GetVisitors(startTime *time.Time, endTime *time.Time, pa
 	}
 	return visitors, nil
 
+}
+
+func init() {
+	err := database.PublicDB.AutoMigrate(&Event{})
+	if err != nil {
+		panic(fmt.Sprintf("Error auto migrating Event: %s", err.Error()))
+	}
 }

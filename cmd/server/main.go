@@ -5,6 +5,7 @@ import (
 	"back/pkg/controllers/mock_data"
 	"back/pkg/controllers/offers"
 	"back/pkg/controllers/runners"
+	"back/pkg/controllers/tracking"
 	"back/pkg/controllers/users"
 	"back/pkg/database"
 	glm "back/pkg/models/gitlab"
@@ -68,14 +69,14 @@ func main() {
 	authorized := r.Group("authorized")
 	authorized.Use(sessions.Sessions("GILMO_SESSION", store))
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000", "http://localhost:5173"},
 		AllowCredentials: true,
 		//AllowHeaders:     []string{"Origin"},
 		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
 		MaxAge:       12 * time.Hour,
 	}))
 	authorized.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000", "http://localhost:5173"},
 		AllowCredentials: true,
 		//AllowHeaders:     []string{"Origin"},
 		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
@@ -84,10 +85,12 @@ func main() {
 
 	oc := offers.NewOfferController(database.PublicDB)
 	rc := runners.NewRunnerController(database.PublicDB)
+	tc := tracking.NewTrackingController(database.PublicDB)
 	r.POST("/login", login.ValidateLogin)
 	r.POST("/register", users.Register)
 	r.GET("/validate_token", users.ValidateToken)
 	r.GET("/refresh_token", users.RefreshToken)
+	r.POST("/tracking", tc.AddEvent)
 	authorized.Use(login.CheckLoginMidleware())
 	authorized.Use(um.SetGitClientMiddleware())
 	{
