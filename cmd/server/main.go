@@ -72,15 +72,17 @@ func main() {
 		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000", "http://localhost:5173"},
 		AllowCredentials: true,
 		//AllowHeaders:     []string{"Origin"},
-		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
-		MaxAge:       12 * time.Hour,
+		AllowHeaders:  []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
+		MaxAge:        12 * time.Hour,
+		AllowWildcard: true,
 	}))
 	authorized.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000", "http://localhost:5173"},
 		AllowCredentials: true,
 		//AllowHeaders:     []string{"Origin"},
-		AllowHeaders: []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
-		MaxAge:       12 * time.Hour,
+		AllowHeaders:  []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
+		MaxAge:        12 * time.Hour,
+		AllowWildcard: true,
 	}))
 
 	oc := offers.NewOfferController(database.PublicDB)

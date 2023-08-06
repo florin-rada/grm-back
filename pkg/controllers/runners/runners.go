@@ -268,7 +268,23 @@ func (rc RunnerController) AddRunnerForUser(ctx *gin.Context) {
 		})
 		return
 	}
-	args := struct {
+	runnerIDstr := ctx.Param("id")
+	if runnerIDstr == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrNoID.Error(),
+			"response": "",
+		})
+		return
+	}
+	runnerID, err := strconv.ParseInt(runnerIDstr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":    consterrors.ErrInvalidID,
+			"response": "",
+		})
+		return
+	}
+	/* args := struct {
 		IdRunner int `json:"git_id_runner"`
 	}{}
 	err := ctx.BindJSON(&args)
@@ -278,7 +294,7 @@ func (rc RunnerController) AddRunnerForUser(ctx *gin.Context) {
 			"response": "",
 		})
 		return
-	}
+	} */
 	gitClient := utils.GetGitClientFromContext(ctx)
 	if gitClient == nil {
 		ctx.JSON(http.StatusOK, gin.H{
@@ -287,7 +303,7 @@ func (rc RunnerController) AddRunnerForUser(ctx *gin.Context) {
 		})
 		return
 	}
-	err = rc.rr.AddRunnerForUser(gitClient, userID, args.IdRunner)
+	err = rc.rr.AddRunnerForUser(gitClient, userID, int(runnerID))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
