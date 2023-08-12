@@ -71,6 +71,7 @@ func main() {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000", "http://localhost:5173"},
 		AllowCredentials: true,
+		AllowMethods:     []string{"GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS", "HEAD"},
 		//AllowHeaders:     []string{"Origin"},
 		AllowHeaders:  []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
 		MaxAge:        12 * time.Hour,
@@ -79,6 +80,7 @@ func main() {
 	authorized.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:9080", "http://localhost:3000", "http://localhost:5173"},
 		AllowCredentials: true,
+		AllowMethods:     []string{"GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS", "HEAD"},
 		//AllowHeaders:     []string{"Origin"},
 		AllowHeaders:  []string{"Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "Cache-Control", "Private-Token"},
 		MaxAge:        12 * time.Hour,
