@@ -8,7 +8,6 @@ import (
 	"back/pkg/utils"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -360,12 +359,13 @@ func (rc RunnerController) UpdateRunner(ctx *gin.Context) {
 	}
 
 	args := struct {
-		Description    *string   `url:"description,omitempty" json:"description,omitempty"`
-		Paused         *bool     `url:"paused,omitempty" json:"paused,omitempty"`
-		TagList        *[]string `url:"tag_list[],omitempty" json:"tag_list,omitempty"`
-		RunUntagged    *bool     `url:"run_untagged,omitempty" json:"run_untagged,omitempty"`
-		MaximumTimeout *int      `url:"maximum_timeout,omitempty" json:"maximum_timeout,omitempty"`
-		MaxConcurrent  *int      `url:"max_concurrent,omitempty" json:"max_concurrent,omitempty"`
+		Description    *string `url:"description,omitempty" json:"description,omitempty"`
+		Paused         *bool   `url:"paused,omitempty" json:"paused,omitempty"`
+		TagList        *string `url:"tag_list,omitempty" json:"tag_list,omitempty"`
+		RunUntagged    *bool   `url:"run_untagged,omitempty" json:"run_untagged,omitempty"`
+		MaximumTimeout *int    `url:"maximum_timeout,omitempty" json:"maximum_timeout,omitempty"`
+		MaxConcurrent  *int    `url:"max_concurrent,omitempty" json:"max_concurrent,omitempty"`
+		Locked         *bool   `url:"locked,omitempty" json:"locked,omitempty"`
 	}{}
 	err = ctx.BindJSON(&args)
 	if err != nil {
@@ -382,7 +382,7 @@ func (rc RunnerController) UpdateRunner(ctx *gin.Context) {
 		r.Paused = *args.Paused
 	}
 	if args.TagList != nil {
-		r.TagList = strings.Join(*args.TagList, ",")
+		r.TagList = *args.TagList
 	}
 	if args.RunUntagged != nil {
 		r.RunUntagged = *args.RunUntagged
@@ -392,6 +392,10 @@ func (rc RunnerController) UpdateRunner(ctx *gin.Context) {
 	}
 	if args.MaxConcurrent != nil {
 		r.MaxConcurrent = *args.MaxConcurrent
+	}
+
+	if args.Locked != nil {
+		r.Locked = *args.Locked
 	}
 	err = rc.rr.UpdateRunnerOnGit(client, r)
 	if err != nil {

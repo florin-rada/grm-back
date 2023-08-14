@@ -83,6 +83,7 @@ func (rr RunnerRepository) UpdateRunnerOnGit(client *gitlab.Client, r Runner) er
 		TagList:        &tagListArray,
 		RunUntagged:    &r.RunUntagged,
 		MaximumTimeout: &r.MaximumTimeout,
+		Locked:         &r.Locked,
 	})
 	return err
 }
