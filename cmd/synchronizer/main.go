@@ -2,14 +2,17 @@ package main
 
 import (
 	"back/pkg/models/queue"
-	"fmt"
-	"math/rand"
 	"runtime"
 )
 
+func loadData() error {
+
+}
+
 func main() {
 	qm := queue.NewQueueManager(runtime.NumCPU()*1000, runtime.NumCPU()*100)
-	replyChan := make(chan int, 3)
+
+	/* replyChan := make(chan int, 3)
 	min := int(0)
 	max := int(100)
 	numToGen := 10
@@ -26,5 +29,5 @@ func main() {
 	for i := range replyChan {
 		generatedNum = append(generatedNum, i)
 	}
-	fmt.Printf("%+v", generatedNum)
+	fmt.Printf("%+v", generatedNum) */
 }

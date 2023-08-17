@@ -3,7 +3,6 @@ package users
 import (
 	consterrors "back/pkg/const_errors"
 	db "back/pkg/database"
-	"back/pkg/model/offers"
 	"back/pkg/models/gitlab"
 	"back/pkg/models/keycloak"
 	"back/pkg/models/offers"
@@ -220,7 +219,8 @@ func GetOfferForUser(idUser string) (offers.Offer, error) {
 	var o offers.Offer
 	err := db.PrivateDB.Model(&UserOffer{}).Where("id_user=?", idUser).Association("Offer").Find(&o)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		defaultOffer, err := offers.GetDefaultOffer()
+		or := offers.NewOfferRepository(db.PrivateDB)
+		defaultOffer, err := or.GetDefaultOffer()
 		return defaultOffer, err
 	}
 	if err != nil {

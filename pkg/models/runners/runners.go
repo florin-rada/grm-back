@@ -19,7 +19,7 @@ type RunnerRepository struct {
 }
 
 type Runner struct {
-	InternalUserId string    `json:"internal_user_id,omitempty" gorm:"internal_user_id,primaryKey"`
+	InternalUserID string    `json:"internal_user_id,omitempty" gorm:"internal_user_id,primaryKey"`
 	ID             int       `json:"id" gorm:"id,primaryKey;autoIncrement:false"`
 	Description    string    `json:"description" gorm:"description"`
 	Active         bool      `json:"active" gorm:"active"`
@@ -35,6 +35,7 @@ type Runner struct {
 	MaximumTimeout int       `json:"maximum_timeout" gorm:"maximum_timeout"`
 	ContactedAt    time.Time `json:"contacted_at" gorm:"contacted_at"`
 	MaxConcurrent  int       `json:"max_concurent" gorm:"max_concurrent"`
+	SyncActive     bool      `json:"sync_active" gorm:"sync_active"`
 }
 
 func NewRunnerRepository(db *gorm.DB) *RunnerRepository {
@@ -64,6 +65,15 @@ func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (*Runner, error) {
 	}
 
 	return &r, nil
+}
+
+func (rr RunnerRepository) GetRunnersToSync(userID string, maxRunners int) ([]Runner, error) {
+	runners := []Runner{}
+	resp := rr.db.Model(&Runner{}).Where("internal_user_id=?", userID).Limit(maxRunners).Find(&runners)
+	if resp.Error != nil {
+		return []Runner{}, resp.Error
+	}
+	return runners, nil
 }
 
 func (rr RunnerRepository) SyncRunnerStatus(runnerID uint) error {
@@ -150,7 +160,7 @@ func (rr RunnerRepository) AddRunnerForUser(userID string, runnerId int) error {
 	if err != nil {
 		return err
 	}
-	r.InternalUserId = userID
+	r.InternalUserID = userID
 	resp := rr.db.Save(r)
 	if resp.Error != nil {
 		return resp.Error
@@ -160,7 +170,7 @@ func (rr RunnerRepository) AddRunnerForUser(userID string, runnerId int) error {
 
 func (rr RunnerRepository) DeleteRunner(runnerID uint, userID string) error {
 	resp := rr.db.Delete((&Runner{
-		InternalUserId: userID,
+		InternalUserID: userID,
 		ID:             int(runnerID),
 	}))
 	return resp.Error
