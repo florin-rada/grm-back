@@ -68,10 +68,11 @@ func newQueue(maxSize int) Queue {
 
 var queue chan QueueItem
 
+// replaced by qm.AddToQueue
 // Receives a closure with signature func() and adds it to the queue
-func AddToQueue(item QueueItem) {
+/* func AddToQueue(item QueueItem) {
 	queue <- item
-}
+} */
 
 // This is our executor, it loops and waits for tasks to do
 // Runs in a spearate goroutine

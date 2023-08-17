@@ -3,18 +3,19 @@ package runners
 import (
 	consterrors "back/pkg/const_errors"
 	db "back/pkg/database"
+	"back/pkg/models/gitlab"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/xanzy/go-gitlab"
 	gl "github.com/xanzy/go-gitlab"
 	"gorm.io/gorm"
 )
 
 type RunnerRepository struct {
-	db *gorm.DB
+	db     *gorm.DB
+	client *gl.Client
 }
 
 type Runner struct {
@@ -65,6 +66,31 @@ func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (*Runner, error) {
 	return &r, nil
 }
 
+func (rr RunnerRepository) SyncRunnerStatus(runnerID uint) error {
+	r, err := rr.GetRunner(runnerID)
+	if err != nil {
+		return err
+	}
+	rd, err := gitlab.GetRunnerDetails(rr.client, int(runnerID))
+	if err != nil {
+		return err
+	}
+
+	r.Active = rd.Active
+	r.Description = rd.Description
+	r.Paused = rd.Paused
+	r.Online = rd.Online
+	r.Status = rd.Status
+	r.TagList = strings.Join(rd.TagList, ",")
+	r.RunUntagged = rd.RunUntagged
+	r.IsShared = rd.IsShared
+	r.Locked = rd.Locked
+	r.MaximumTimeout = rd.MaximumTimeout
+	r.ContactedAt = *rd.ContactedAt
+
+	return rr.UpdateRunner(r)
+}
+
 func (rr RunnerRepository) GetRunner(runnerID uint) (Runner, error) {
 	r := Runner{}
 	resp := rr.db.Find(&r, runnerID)
@@ -74,10 +100,10 @@ func (rr RunnerRepository) GetRunner(runnerID uint) (Runner, error) {
 	return r, nil
 }
 
-func (rr RunnerRepository) UpdateRunnerOnGit(client *gitlab.Client, r Runner) error {
+func (rr RunnerRepository) UpdateRunnerOnGit(r Runner) error {
 
 	tagListArray := strings.Split(r.TagList, ",")
-	_, _, err := client.Runners.UpdateRunnerDetails(r.ID, &gl.UpdateRunnerDetailsOptions{
+	_, _, err := rr.client.Runners.UpdateRunnerDetails(r.ID, &gl.UpdateRunnerDetailsOptions{
 		Description:    &r.Description,
 		Paused:         &r.Paused,
 		TagList:        &tagListArray,
@@ -106,14 +132,14 @@ func (rr RunnerRepository) GetUserRunners(userID string) ([]Runner, error) {
 // AddRunnerForUser stores a runner's details to the local database
 // it accepts the runnerID and based on this, takes the runner details from gitlab
 // than stores the relevant runner details to the database
-func (rr RunnerRepository) AddRunnerForUser(client *gl.Client, userID string, runnerId int) error {
-	if client == nil {
+func (rr RunnerRepository) AddRunnerForUser(userID string, runnerId int) error {
+	if rr.client == nil {
 		return consterrors.ErrNoGitClient
 	}
 	if userID == "" {
 		return consterrors.ErrNoUserId
 	}
-	rd, _, err := client.Runners.GetRunnerDetails(runnerId)
+	rd, _, err := rr.client.Runners.GetRunnerDetails(runnerId)
 	if err != nil {
 		return err
 	}

@@ -113,6 +113,29 @@ func (jm JobsModel) GetRunnerJobs(idRunner uint, idUser string, page int, perPag
 	return jobs, nil
 }
 
+func (jm JobsModel) SyncRunnerJobs(runnerID uint) error {
+	glJobs, _, err := gitlab.GetRunnerJobs(jm.client, int(runnerID), "", 0, 10)
+	if err != nil {
+		return err
+	}
+
+	jobs := make([]Job, 0, len(glJobs))
+	for _, job := range glJobs {
+		translated, err := TranslateGLJobToJob(job)
+		if err != nil {
+			return err
+		}
+		jobs = append(jobs, *translated)
+	}
+	resp := jm.db.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(jobs)
+	if resp.Error != nil {
+		return resp.Error
+	}
+	return nil
+}
+
 func (jm JobsModel) SearchJobsForStatistics(userID string, params StatisticsSearchArgs) ([]Job, error) {
 	tr := jm.db.Model(&Job{})
 	tr = tr.Where("internal_user_id=?", userID)

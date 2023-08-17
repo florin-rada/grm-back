@@ -3,8 +3,10 @@ package users
 import (
 	consterrors "back/pkg/const_errors"
 	db "back/pkg/database"
+	"back/pkg/model/offers"
 	"back/pkg/models/gitlab"
 	"back/pkg/models/keycloak"
+	"back/pkg/models/offers"
 	"errors"
 	"fmt"
 	"net/http"
@@ -39,6 +41,11 @@ type PrivateModel struct {
 type User struct {
 	gorm.Model
 	Email string `json:"email" gorm:"email,uniqueIndex:unique_email"`
+}
+
+type UserOffer struct {
+	IDUser string       `gorm:"id_user,unique"`
+	Offer  offers.Offer `gorm:"unique"`
 }
 
 type UserCredential struct {
@@ -207,6 +214,20 @@ func SetUserGitDetails(gld *GitlabDetails) error {
 		return resp.Error
 	}
 	return nil
+}
+
+func GetOfferForUser(idUser string) (offers.Offer, error) {
+	var o offers.Offer
+	err := db.PrivateDB.Model(&UserOffer{}).Where("id_user=?", idUser).Association("Offer").Find(&o)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		defaultOffer, err := offers.GetDefaultOffer()
+		return defaultOffer, err
+	}
+	if err != nil {
+		return offers.Offer{}, nil
+	}
+
+	return o, nil
 }
 
 func SetGitClientMiddleware() gin.HandlerFunc {

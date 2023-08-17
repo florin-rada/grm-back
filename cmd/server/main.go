@@ -9,9 +9,7 @@ import (
 	"back/pkg/controllers/users"
 	"back/pkg/database"
 	glm "back/pkg/models/gitlab"
-	"back/pkg/models/queue"
 	um "back/pkg/models/users"
-	"math/rand"
 	"os"
 	"time"
 
@@ -116,7 +114,7 @@ func main() {
 		authorized.PUT("/offers/:id", oc.UpdateOffer)
 		authorized.DELETE("/offers/:id", oc.DeleteOffer)
 		authorized.GET("/offers/:id", oc.GetOffer)
-		authorized.GET("/test_mt", func(c *gin.Context) {
+		/* authorized.GET("/test_mt", func(c *gin.Context) {
 			replyChan := make(chan int, 3)
 			min := int(0)
 			max := int(100)
@@ -137,7 +135,7 @@ func main() {
 			c.JSON(200, gin.H{
 				"generated_numbers": generatedNum,
 			})
-		})
+		}) */
 		authorized.GET("/get", func(c *gin.Context) {
 			userID, exists := c.Get("user_id")
 			if !exists {

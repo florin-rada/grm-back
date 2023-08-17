@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	qm := queue.NewQueueManager(runtime.NumCPU()*1000, runtime.NumCPU()*10)
+	qm := queue.NewQueueManager(runtime.NumCPU()*1000, runtime.NumCPU()*100)
 	replyChan := make(chan int, 3)
 	min := int(0)
 	max := int(100)

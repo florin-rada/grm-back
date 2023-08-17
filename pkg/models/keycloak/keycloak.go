@@ -86,6 +86,23 @@ func CreateUser(email string, password string, firstName string, lastName string
 	return &userID, nil
 }
 
+func GetUsers() ([]*gocloak.User, error) {
+	admToken, err := getAdminToken()
+	if err != nil {
+		return []*gocloak.User{}, err
+	}
+	mustBeTrue := true
+	users, err := kc.client.GetUsers(context.Background(), *admToken, kc.realm, gocloak.GetUsersParams{
+		EmailVerified: &mustBeTrue,
+		Enabled:       &mustBeTrue,
+	})
+	if err != nil {
+		return []*gocloak.User{}, err
+	}
+	return users, nil
+
+}
+
 func getAdminToken() (*string, error) {
 	jwt, err := kc.client.GetToken(context.Background(), "master", gocloak.TokenOptions{
 		ClientID:     gocloak.StringP("admin-cli"),

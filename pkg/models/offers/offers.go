@@ -3,6 +3,7 @@ package offers
 import (
 	consterrors "back/pkg/const_errors"
 	"back/pkg/database"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,13 +17,14 @@ import (
 // Offer represents one of the packages the tool offers
 type Offer struct {
 	gorm.Model
-	Name        string    `json:"name" gorm:"name"`
-	MaxRunners  int       `json:"max_runners" gorm:"max_runners"`
-	BasePrice   int       `json:"base_price" gorm:"base_price"` // price is in cents to avoid rounding errors (99 -> 99 cents 0.99 Dollars)
-	Currency    string    `json:"currency" gorm:"currency"`
-	Description string    `json:"description" gorm:"description"`
-	MaxSyncRate time.Time `json:"max_sync_rate" gorm:"max_sync_rate"` // how often can the system check the status
-	Published   bool      `json:"published" gorm:"published"`
+	Name        string        `json:"name" gorm:"name"`
+	MaxRunners  int           `json:"max_runners" gorm:"max_runners"`
+	BasePrice   int           `json:"base_price" gorm:"base_price"` // price is in cents to avoid rounding errors (99 -> 99 cents 0.99 Dollars)
+	Currency    string        `json:"currency" gorm:"currency"`
+	Description string        `json:"description" gorm:"description"`
+	MaxSyncRate time.Duration `json:"max_sync_rate" gorm:"max_sync_rate"` // how often can the system check the status
+	Published   bool          `json:"published" gorm:"published"`
+	Default     bool          `json:"default" gorm:"default,unique"`
 }
 
 type OfferRepository struct {
@@ -46,7 +48,7 @@ func (o *OfferRepository) AddOffer(offer Offer) error {
 	if offer.Currency == "" {
 		return consterrors.ErrEmptyCurrency
 	}
-	if offer.MaxSyncRate.IsZero() {
+	if offer.MaxSyncRate == 0 {
 		return consterrors.ErrZerodMaxSyncRate
 	}
 
@@ -140,6 +142,25 @@ func (o *OfferRepository) GetOffer(id int) (Offer, error) {
 	var offer Offer
 	result := o.db.First(&offer)
 	if result.Error != nil {
+		return Offer{}, result.Error
+	}
+	return offer, nil
+}
+
+func (o *OfferRepository) GetDefaultOffer() (Offer, error) {
+	var offer Offer
+	result := o.db.Where("default=?", true).First(&offer)
+	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return Offer{
+			Name:        "Free Tier",
+			MaxRunners:  5,
+			BasePrice:   0.0,
+			Currency:    "USD",
+			MaxSyncRate: time.Second * 60,
+			Default:     true,
+			Published:   true,
+		}, nil
+	} else if result.Error != nil {
 		return Offer{}, result.Error
 	}
 	return offer, nil
