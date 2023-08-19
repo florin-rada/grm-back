@@ -17,7 +17,7 @@ The backends role is to handle the interactions between the user and the gitlab 
 
 ## Build instructions for local development
 
-After cloning the repo, at the root, call "go mod tidy" to download all the dependencies than call "go build -o main.exe main.go" to build the project
+After cloning the repo, at the root, call "go mod tidy" to download all the dependencies than call "go build -o bin/server/main.exe cmd/server/main.go" to build the server and "go build -o bin/synchronizer/main.exe cmd/synchronize/main.go"
 
 ## Api endpoints
 

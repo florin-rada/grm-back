@@ -8,8 +8,11 @@ import (
 	"back/pkg/models/queue"
 	"back/pkg/models/runners"
 	users_model "back/pkg/models/users"
+	"errors"
 	"runtime"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type UserData struct {
@@ -42,18 +45,18 @@ func loadData(rr *runners.RunnerRepository) error {
 func getUserData(rr *runners.RunnerRepository, id string) (UserData, error) {
 	ud := UserData{}
 	ugd, err := users_model.GetUserGitDetails(id)
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return UserData{}, err
 	}
 	ud.GitToken = ugd.Token
 	ud.BaseGitlabURL = ugd.InstanceURL
 	uo, err := users_model.GetOfferForUser(id)
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return UserData{}, err
 	}
 	ud.MaxRunners = uo.MaxRunners
 	ur, err := rr.GetRunnersToSync(id, ud.MaxRunners)
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return UserData{}, err
 	}
 	ud.RunnersToSync = ur
@@ -105,15 +108,19 @@ func main() {
 		<-syncTycker.C
 
 		updateUserData(rr)
-		// first, update the runner statuses for all users
 		for _, ud := range userData {
+			if ud.BaseGitlabURL == "" || ud.GitToken == "" {
+				continue
+			}
 			gitClient, err := gitlab.GetClient(ud.BaseGitlabURL, ud.GitToken)
 			if err != nil {
 				continue
 			}
 			jm := jobs.NewJobsModel(database.PublicDB, gitClient)
 			for _, r := range ud.RunnersToSync {
+				// first, update the runner statuses
 				addUpdateStatusesToQueue(qm, rr, uint(r.ID))
+				// second, we update the jobs
 				addUpdateRunnerJobsToQueue(qm, jm, uint(r.ID))
 			}
 		}
