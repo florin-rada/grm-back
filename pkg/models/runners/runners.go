@@ -38,8 +38,8 @@ type Runner struct {
 	SyncActive     bool      `json:"sync_active" gorm:"sync_active"`
 }
 
-func NewRunnerRepository(db *gorm.DB) *RunnerRepository {
-	return &RunnerRepository{db: db}
+func NewRunnerRepository(db *gorm.DB, gitClient *gl.Client) *RunnerRepository {
+	return &RunnerRepository{db: db, client: gitClient}
 }
 
 func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (*Runner, error) {
@@ -77,6 +77,7 @@ func (rr RunnerRepository) GetRunnersToSync(userID string, maxRunners int) ([]Ru
 }
 
 func (rr RunnerRepository) SyncRunnerStatus(runnerID uint) error {
+	fmt.Printf("Starting updating runner status for %d\n", runnerID)
 	r, err := rr.GetRunner(runnerID)
 	if err != nil {
 		return err
@@ -97,7 +98,7 @@ func (rr RunnerRepository) SyncRunnerStatus(runnerID uint) error {
 	r.Locked = rd.Locked
 	r.MaximumTimeout = rd.MaximumTimeout
 	r.ContactedAt = *rd.ContactedAt
-
+	fmt.Printf("Ending updating runner status for %d\n", runnerID)
 	return rr.UpdateRunner(r)
 }
 

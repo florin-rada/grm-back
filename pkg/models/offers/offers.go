@@ -5,7 +5,6 @@ import (
 	"back/pkg/database"
 	"errors"
 	"fmt"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -17,14 +16,14 @@ import (
 // Offer represents one of the packages the tool offers
 type Offer struct {
 	gorm.Model
-	Name        string        `json:"name" gorm:"name"`
-	MaxRunners  int           `json:"max_runners" gorm:"max_runners"`
-	BasePrice   int           `json:"base_price" gorm:"base_price"` // price is in cents to avoid rounding errors (99 -> 99 cents 0.99 Dollars)
-	Currency    string        `json:"currency" gorm:"currency"`
-	Description string        `json:"description" gorm:"description"`
-	MaxSyncRate time.Duration `json:"max_sync_rate" gorm:"max_sync_rate"` // how often can the system check the status
-	Published   bool          `json:"published" gorm:"published"`
-	Default     bool          `json:"default" gorm:"default,unique"`
+	Name           string `json:"name" gorm:"name"`
+	MaxRunners     int    `json:"max_runners" gorm:"max_runners"`
+	BasePrice      int    `json:"base_price" gorm:"base_price"` // price is in cents to avoid rounding errors (99 -> 99 cents 0.99 Dollars)
+	Currency       string `json:"currency" gorm:"currency"`
+	Description    string `json:"description" gorm:"description"`
+	MaxSyncRate    uint   `json:"max_sync_rate" gorm:"max_sync_rate"` // how often can the system check the status
+	Published      bool   `json:"published" gorm:"published"`
+	IsDefaultOffer bool   `json:"is_default_offer" gorm:"is_default_offer,unique"`
 }
 
 type OfferRepository struct {
@@ -149,18 +148,22 @@ func (o *OfferRepository) GetOffer(id int) (Offer, error) {
 
 func (o *OfferRepository) GetDefaultOffer() (Offer, error) {
 	var offer Offer
-	result := o.db.Where("default=?", true).First(&offer)
+	result := o.db.Model(&offer).Where("is_default_offer=?", 1).First(&offer)
 	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return Offer{
-			Name:        "Free Tier",
-			MaxRunners:  5,
-			BasePrice:   0.0,
-			Currency:    "USD",
-			MaxSyncRate: time.Second * 60,
-			Default:     true,
-			Published:   true,
+			Name:           "Free Tier",
+			MaxRunners:     5,
+			BasePrice:      0.0,
+			Currency:       "USD",
+			MaxSyncRate:    60, // 60 seconds
+			IsDefaultOffer: true,
+			Published:      true,
 		}, nil
 	} else if result.Error != nil {
+		sql := o.db.ToSQL(func(tx *gorm.DB) *gorm.DB {
+			return tx.Model(&offer).Where("is_default_offer=?", 1).First(&offer)
+		})
+		fmt.Printf("The sql statement that failed: %s", sql)
 		return Offer{}, result.Error
 	}
 	return offer, nil

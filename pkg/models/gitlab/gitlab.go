@@ -45,7 +45,7 @@ func GetRunnerDetails(client *gl.Client, runnerID int) (*gl.RunnerDetails, error
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("runner details: %+v", rd)
+	//fmt.Printf("runner details: %+v", rd)
 	return rd, nil
 }
 

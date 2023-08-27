@@ -114,6 +114,7 @@ func (jm JobsModel) GetRunnerJobs(idRunner uint, idUser string, page int, perPag
 }
 
 func (jm JobsModel) SyncRunnerJobs(runnerID uint) error {
+	fmt.Printf("Starting updating runner jobs for runner %d\n", runnerID)
 	glJobs, _, err := gitlab.GetRunnerJobs(jm.client, int(runnerID), "", 0, 20)
 	if err != nil {
 		return err
@@ -133,6 +134,7 @@ func (jm JobsModel) SyncRunnerJobs(runnerID uint) error {
 	if resp.Error != nil {
 		return resp.Error
 	}
+	fmt.Printf("Ending updating runner jobs for runner %d\n", runnerID)
 	return nil
 }
 

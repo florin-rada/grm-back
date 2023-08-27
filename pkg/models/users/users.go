@@ -43,8 +43,9 @@ type User struct {
 }
 
 type UserOffer struct {
-	IDUser string       `gorm:"id_user,unique"`
-	Offer  offers.Offer `gorm:"unique"`
+	IDUser  string       `gorm:"id_user,uniqueIndex:unique_offer"`
+	IDOffer int          `gorm:"id_offer"`
+	Offer   offers.Offer `gorm:"foreignKey:IDOffer"`
 }
 
 type UserCredential struct {
@@ -216,18 +217,17 @@ func SetUserGitDetails(gld *GitlabDetails) error {
 }
 
 func GetOfferForUser(idUser string) (offers.Offer, error) {
-	var o offers.Offer
-	err := db.PrivateDB.Model(&UserOffer{}).Where("id_user=?", idUser).Association("Offer").Find(&o)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		or := offers.NewOfferRepository(db.PrivateDB)
+	var uo UserOffer
+	resp := db.PublicDB.Model(&UserOffer{}).Where("id_user=?", idUser).First(&uo)
+	if errors.Is(resp.Error, gorm.ErrRecordNotFound) {
+		or := offers.NewOfferRepository(db.PublicDB)
 		defaultOffer, err := or.GetDefaultOffer()
 		return defaultOffer, err
 	}
-	if err != nil {
-		return offers.Offer{}, nil
+	if resp.Error != nil {
+		return offers.Offer{}, resp.Error
 	}
-
-	return o, nil
+	return uo.Offer, nil
 }
 
 func SetGitClientMiddleware() gin.HandlerFunc {
@@ -388,6 +388,10 @@ func init() {
 	if err != nil {
 		panic("Error migrating users table")
 	}
+	err = db.PublicDB.AutoMigrate(&UserOffer{})
+	if err != nil {
+		panic("Error migrating user_offer table")
+	}
 	err = db.PrivateDB.AutoMigrate(&UserCredential{})
 	if err != nil {
 		panic("Error migrating user_credentials table")
@@ -410,4 +414,5 @@ func init() {
 	if err != nil {
 		panic("Error migrating request_deletions table")
 	}
+
 }

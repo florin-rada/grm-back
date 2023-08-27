@@ -9,7 +9,12 @@ import (
 	"back/pkg/models/runners"
 	users_model "back/pkg/models/users"
 	"errors"
+	"flag"
+	"fmt"
+	"log"
+	"os"
 	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"gorm.io/gorm"
@@ -47,19 +52,23 @@ func getUserData(rr *runners.RunnerRepository, id string) (UserData, error) {
 	ugd, err := users_model.GetUserGitDetails(id)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return UserData{}, err
+	} else if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		ugd = &users_model.GitlabDetails{}
 	}
-	ud.GitToken = ugd.Token
-	ud.BaseGitlabURL = ugd.InstanceURL
 	uo, err := users_model.GetOfferForUser(id)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return UserData{}, err
 	}
 	ud.MaxRunners = uo.MaxRunners
-	ur, err := rr.GetRunnersToSync(id, ud.MaxRunners)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return UserData{}, err
+	ud.GitToken = ugd.Token
+	ud.BaseGitlabURL = ugd.InstanceURL
+	if ud.GitToken != "" && ud.BaseGitlabURL != "" {
+		ur, err := rr.GetRunnersToSync(id, ud.MaxRunners)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return UserData{}, err
+		}
+		ud.RunnersToSync = ur
 	}
-	ud.RunnersToSync = ur
 	return ud, nil
 }
 
@@ -96,17 +105,33 @@ func addUpdateRunnerJobsToQueue(qm queue.QueueManager, jm *jobs.JobsModel, runne
 	})
 }
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 func main() {
+	flag.Parse()
+	if *cpuprofile != "" {
+		fmt.Printf("\nCreating profile file at %s\n", *cpuprofile)
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 	qm := queue.NewQueueManager(runtime.NumCPU()*1000, runtime.NumCPU()*100)
-	rr := runners.NewRunnerRepository(database.PublicDB)
+	rr := runners.NewRunnerRepository(database.PublicDB, nil)
 	err := loadData(rr)
 	if err != nil {
 		panic(err.Error())
 	}
 
+	counter := 0
 	for {
 		<-syncTycker.C
-
+		counter++
+		if counter == 2 {
+			return
+		}
 		updateUserData(rr)
 		for _, ud := range userData {
 			if ud.BaseGitlabURL == "" || ud.GitToken == "" {
@@ -116,6 +141,7 @@ func main() {
 			if err != nil {
 				continue
 			}
+			rr := runners.NewRunnerRepository(database.PublicDB, gitClient)
 			jm := jobs.NewJobsModel(database.PublicDB, gitClient)
 			for _, r := range ud.RunnersToSync {
 				// first, update the runner statuses
