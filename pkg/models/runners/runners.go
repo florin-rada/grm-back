@@ -14,8 +14,8 @@ import (
 )
 
 type RunnerRepository struct {
-	db     *gorm.DB
-	client *gl.Client
+	db *gorm.DB
+	//client *gl.Client
 }
 
 type Runner struct {
@@ -38,8 +38,8 @@ type Runner struct {
 	SyncActive     bool      `json:"sync_active" gorm:"sync_active"`
 }
 
-func NewRunnerRepository(db *gorm.DB, gitClient *gl.Client) *RunnerRepository {
-	return &RunnerRepository{db: db, client: gitClient}
+func NewRunnerRepository(db *gorm.DB) *RunnerRepository {
+	return &RunnerRepository{db: db}
 }
 
 func TranslateGLRunnerDetailsToRunner(rd *gl.RunnerDetails) (*Runner, error) {
@@ -76,13 +76,13 @@ func (rr RunnerRepository) GetRunnersToSync(userID string, maxRunners int) ([]Ru
 	return runners, nil
 }
 
-func (rr RunnerRepository) SyncRunnerStatus(runnerID uint) error {
+func (rr RunnerRepository) SyncRunnerStatus(client *gl.Client, runnerID uint) error {
 	fmt.Printf("Starting updating runner status for %d\n", runnerID)
 	r, err := rr.GetRunner(runnerID)
 	if err != nil {
 		return err
 	}
-	rd, err := gitlab.GetRunnerDetails(rr.client, int(runnerID))
+	rd, err := gitlab.GetRunnerDetails(client, int(runnerID))
 	if err != nil {
 		return err
 	}
@@ -111,10 +111,10 @@ func (rr RunnerRepository) GetRunner(runnerID uint) (Runner, error) {
 	return r, nil
 }
 
-func (rr RunnerRepository) UpdateRunnerOnGit(r Runner) error {
+func (rr RunnerRepository) UpdateRunnerOnGit(client *gl.Client, r Runner) error {
 
 	tagListArray := strings.Split(r.TagList, ",")
-	_, _, err := rr.client.Runners.UpdateRunnerDetails(r.ID, &gl.UpdateRunnerDetailsOptions{
+	_, _, err := client.Runners.UpdateRunnerDetails(r.ID, &gl.UpdateRunnerDetailsOptions{
 		Description:    &r.Description,
 		Paused:         &r.Paused,
 		TagList:        &tagListArray,
@@ -143,14 +143,14 @@ func (rr RunnerRepository) GetUserRunners(userID string) ([]Runner, error) {
 // AddRunnerForUser stores a runner's details to the local database
 // it accepts the runnerID and based on this, takes the runner details from gitlab
 // than stores the relevant runner details to the database
-func (rr RunnerRepository) AddRunnerForUser(userID string, runnerId int) error {
-	if rr.client == nil {
+func (rr RunnerRepository) AddRunnerForUser(client *gl.Client, userID string, runnerId int) error {
+	if client == nil {
 		return consterrors.ErrNoGitClient
 	}
 	if userID == "" {
 		return consterrors.ErrNoUserId
 	}
-	rd, _, err := rr.client.Runners.GetRunnerDetails(runnerId)
+	rd, _, err := client.Runners.GetRunnerDetails(runnerId)
 	if err != nil {
 		return err
 	}

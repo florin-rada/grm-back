@@ -73,11 +73,12 @@ type StatisticsSearchArgs struct {
 	//Stage          string     `json:"stage,omitempty"`
 }
 
-func TranslateGLJobToJob(gljob *gl.Job) (*Job, error) {
+func TranslateGLJobToJob(userID string, gljob *gl.Job) (*Job, error) {
 	if gljob == nil {
 		return &Job{}, consterrors.ErrInvalidGitlabJob
 	}
 	j := Job{
+		InternalUserId: userID,
 		ID:             gljob.ID,
 		Name:           gljob.Name,
 		CreatedAt:      *gljob.CreatedAt,
@@ -113,7 +114,7 @@ func (jm JobsModel) GetRunnerJobs(idRunner uint, idUser string, page int, perPag
 	return jobs, nil
 }
 
-func (jm JobsModel) SyncRunnerJobs(runnerID uint) error {
+func (jm JobsModel) SyncRunnerJobs(userID string, runnerID uint) error {
 	fmt.Printf("Starting updating runner jobs for runner %d\n", runnerID)
 	glJobs, _, err := gitlab.GetRunnerJobs(jm.client, int(runnerID), "", 0, 20)
 	if err != nil {
@@ -122,7 +123,7 @@ func (jm JobsModel) SyncRunnerJobs(runnerID uint) error {
 
 	jobs := make([]Job, 0, len(glJobs))
 	for _, job := range glJobs {
-		translated, err := TranslateGLJobToJob(job)
+		translated, err := TranslateGLJobToJob(userID, job)
 		if err != nil {
 			return err
 		}
@@ -246,7 +247,7 @@ func (jm JobsModel) SearchRunnerJobs(idRunner uint, userID string, params JobSea
 	return jobs, nil
 }
 
-func (jm JobsModel) SyncJobsBetweenDates(client *gl.Client, userID int, runnerID int, startDate *time.Time, endDate *time.Time) error {
+func (jm JobsModel) SyncJobsBetweenDates(client *gl.Client, userID string, runnerID int, startDate *time.Time, endDate *time.Time) error {
 	if client == nil {
 		return consterrors.ErrNoGitClient
 	}
@@ -277,7 +278,7 @@ func (jm JobsModel) SyncJobsBetweenDates(client *gl.Client, userID int, runnerID
 	}
 	jobs := make([]Job, 0, len(gljobs))
 	for _, job := range gljobs {
-		translated, err := TranslateGLJobToJob(job)
+		translated, err := TranslateGLJobToJob(userID, job)
 		if err != nil {
 			return err
 		}

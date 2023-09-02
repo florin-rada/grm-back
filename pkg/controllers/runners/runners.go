@@ -302,7 +302,7 @@ func (rc RunnerController) AddRunnerForUser(ctx *gin.Context) {
 		})
 		return
 	}
-	err = rc.rr.AddRunnerForUser(userID, int(runnerID))
+	err = rc.rr.AddRunnerForUser(gitClient, userID, int(runnerID))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
@@ -397,7 +397,7 @@ func (rc RunnerController) UpdateRunner(ctx *gin.Context) {
 	if args.Locked != nil {
 		r.Locked = *args.Locked
 	}
-	err = rc.rr.UpdateRunnerOnGit(r)
+	err = rc.rr.UpdateRunnerOnGit(client, r)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),

@@ -17,6 +17,7 @@ import (
 	"runtime/pprof"
 	"time"
 
+	gl "github.com/xanzy/go-gitlab"
 	"gorm.io/gorm"
 )
 
@@ -93,15 +94,15 @@ func updateUserData(rr *runners.RunnerRepository) error {
 	}
 }
 
-func addUpdateStatusesToQueue(qm queue.QueueManager, rr *runners.RunnerRepository, runnerID uint) {
+func addUpdateStatusesToQueue(qm queue.QueueManager, gitClient *gl.Client, rr *runners.RunnerRepository, runnerID uint) {
 	qm.AddToQueue(func(...interface{}) {
-		rr.SyncRunnerStatus(runnerID)
+		rr.SyncRunnerStatus(gitClient, runnerID)
 	})
 }
 
-func addUpdateRunnerJobsToQueue(qm queue.QueueManager, jm *jobs.JobsModel, runnerID uint) {
+func addUpdateRunnerJobsToQueue(qm queue.QueueManager, userID string, jm *jobs.JobsModel, runnerID uint) {
 	qm.AddToQueue(func(...interface{}) {
-		jm.SyncRunnerJobs(runnerID)
+		jm.SyncRunnerJobs(userID, runnerID)
 	})
 }
 
@@ -119,7 +120,7 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 	qm := queue.NewQueueManager(runtime.NumCPU()*1000, runtime.NumCPU()*100)
-	rr := runners.NewRunnerRepository(database.PublicDB, nil)
+	rr := runners.NewRunnerRepository(database.PublicDB)
 	err := loadData(rr)
 	if err != nil {
 		panic(err.Error())
@@ -133,7 +134,7 @@ func main() {
 			return
 		}
 		updateUserData(rr)
-		for _, ud := range userData {
+		for userID, ud := range userData {
 			if ud.BaseGitlabURL == "" || ud.GitToken == "" {
 				continue
 			}
@@ -141,34 +142,16 @@ func main() {
 			if err != nil {
 				continue
 			}
-			rr := runners.NewRunnerRepository(database.PublicDB, gitClient)
+			rr := runners.NewRunnerRepository(database.PublicDB)
 			jm := jobs.NewJobsModel(database.PublicDB, gitClient)
 			for _, r := range ud.RunnersToSync {
 				// first, update the runner statuses
-				addUpdateStatusesToQueue(qm, rr, uint(r.ID))
+				addUpdateStatusesToQueue(qm, gitClient, rr, uint(r.ID))
 				// second, we update the jobs
-				addUpdateRunnerJobsToQueue(qm, jm, uint(r.ID))
+				addUpdateRunnerJobsToQueue(qm, userID, jm, uint(r.ID))
 			}
 		}
 	}
-	/* replyChan := make(chan int, 3)
-	min := int(0)
-	max := int(100)
-	numToGen := 10
-	func(out chan int, min int, max int, toGen int) {
-		qm.AddToQueue(func(...interface{}) {
-			for i := 0; i < numToGen; i++ {
-				num := rand.Intn(max)
-				replyChan <- num
-			}
-			close(replyChan)
-		})
-	}(replyChan, min, max, numToGen)
-	generatedNum := []int{}
-	for i := range replyChan {
-		generatedNum = append(generatedNum, i)
-	}
-	fmt.Printf("%+v", generatedNum) */
 }
 
 func init() {

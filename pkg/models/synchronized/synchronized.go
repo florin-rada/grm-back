@@ -11,7 +11,7 @@ import (
 )
 
 type Synchronized struct {
-	UserID   int64     `gorm:"user_id,index:idx_user_runner,uniqueIndex:single_sync_date"`
+	UserID   string    `gorm:"user_id,index:idx_user_runner,uniqueIndex:single_sync_date"`
 	RunnerID int64     `gorm:"runner_id,index:idx_user_runner,uniqueIndex:single_sync_date"`
 	Date     time.Time `gorm:"date,uniqueIndex:single_sync_date"`
 }
@@ -24,7 +24,7 @@ func NewSynchronizedModel(db *gorm.DB) *SynchronizedModel {
 	return &SynchronizedModel{db: db}
 }
 
-func (sm *SynchronizedModel) GetMinMaxUnsyncedDates(userID int, runnerID int, startDate *time.Time, endDate *time.Time) (*time.Time, *time.Time, error) {
+func (sm *SynchronizedModel) GetMinMaxUnsyncedDates(userID string, runnerID int, startDate *time.Time, endDate *time.Time) (*time.Time, *time.Time, error) {
 	if startDate == nil || endDate == nil {
 		return nil, nil, errors.New("no start date or end date")
 	}
@@ -63,13 +63,13 @@ func (sm *SynchronizedModel) GetMinMaxUnsyncedDates(userID int, runnerID int, st
 	return &notSyncedDates[0], &notSyncedDates[len(notSyncedDates)-1], nil
 }
 
-func (sm *SynchronizedModel) SaveSyncedDates(userID int, runnerID int, startDate time.Time, endDate time.Time) error {
+func (sm *SynchronizedModel) SaveSyncedDates(userID string, runnerID int, startDate time.Time, endDate time.Time) error {
 	numDays := endDate.Sub(startDate).Hours() / 24
 	syncDates := make([]Synchronized, 0, int(numDays))
 	currentDay := startDate
 	for currentDay.Before(endDate) {
 		syncDate := Synchronized{
-			UserID:   int64(userID),
+			UserID:   userID,
 			RunnerID: int64(runnerID),
 			Date:     currentDay,
 		}
