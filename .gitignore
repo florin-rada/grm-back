@@ -5,3 +5,6 @@ grm-back.code-workspace
 go.sum
 new 1.txt
 bin
+*.exe
+*.prof
+*.sum
