@@ -221,7 +221,7 @@ func (rc RunnerController) GetLatestJobsForRunner(ctx *gin.Context) {
 		})
 		return
 	}
-	var numJobs int64
+	var numJobs int64 = 25
 	numJobsStr := ctx.Query("num_jobs")
 	if numJobsStr != "" {
 		numJobs, err = strconv.ParseInt(numJobsStr, 10, 64)
@@ -237,7 +237,7 @@ func (rc RunnerController) GetLatestJobsForRunner(ctx *gin.Context) {
 	page := 0
 	jm := jobsModel.NewJobsModel(rc.db, client)
 	for len(jobs) < int(numJobs) {
-		tmpJobs, err := jm.GetRunnerJobs(uint(runnerID), userID, page, int(numJobs))
+		tmpJobs, err := jm.GetRunnerJobs(uint(runnerID), userID, page, int(numJobs), "desc")
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
 				"error":    err.Error(),

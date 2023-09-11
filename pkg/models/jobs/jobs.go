@@ -41,6 +41,7 @@ type Job struct {
 	QueuedDuration float64   `json:"queued_duration" gorm:"queued_duration"`
 	URL            string    `json:"url" gorm:"url"`
 	Stage          string    `json:"stage" gorm:"stage"`
+	Status         string    `json:"status" gorm:"status"`
 }
 
 // JobSearchArgs is a struct used for filtering jobs by job related criteria
@@ -92,11 +93,12 @@ func TranslateGLJobToJob(userID string, gljob *gl.Job) (*Job, error) {
 		QueuedDuration: gljob.QueuedDuration,
 		URL:            gljob.WebURL,
 		Stage:          gljob.Stage,
+		Status:         gljob.Status,
 	}
 	return &j, nil
 }
 
-func (jm JobsModel) GetRunnerJobs(idRunner uint, idUser string, page int, perPage int) ([]Job, error) {
+func (jm JobsModel) GetRunnerJobs(idRunner uint, idUser string, page int, perPage int, order string) ([]Job, error) {
 	tr := jm.db.Model(&Job{})
 	tr = tr.Where("runner_id=?", idRunner)
 	tr = tr.Where("internal_user_id=?", idUser)
@@ -105,6 +107,13 @@ func (jm JobsModel) GetRunnerJobs(idRunner uint, idUser string, page int, perPag
 	}
 	if page > 0 {
 		tr = tr.Offset(page * perPage).Limit(perPage)
+	}
+	if order != "" {
+		if order == "asc" {
+			tr = tr.Order("id asc")
+		} else if order == "desc" {
+			tr = tr.Order("id desc")
+		}
 	}
 	jobs := []Job{}
 	resp := tr.Find(&jobs)
@@ -127,6 +136,7 @@ func (jm JobsModel) SyncRunnerJobs(userID string, runnerID uint) error {
 		if err != nil {
 			return err
 		}
+		translated.RunnerID = int(runnerID)
 		jobs = append(jobs, *translated)
 	}
 	resp := jm.db.Clauses(clause.OnConflict{

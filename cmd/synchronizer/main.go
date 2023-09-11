@@ -126,13 +126,10 @@ func main() {
 		panic(err.Error())
 	}
 
-	counter := 0
+	//counter := 0
 	for {
 		<-syncTycker.C
-		counter++
-		if counter == 2 {
-			return
-		}
+
 		updateUserData(rr)
 		for userID, ud := range userData {
 			if ud.BaseGitlabURL == "" || ud.GitToken == "" {
