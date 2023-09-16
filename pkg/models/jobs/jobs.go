@@ -4,6 +4,7 @@ import (
 	consterrors "back/pkg/const_errors"
 	db "back/pkg/database"
 	"back/pkg/models/gitlab"
+	"back/pkg/models/projects"
 	"back/pkg/models/synchronized"
 	"fmt"
 	"time"
@@ -129,7 +130,7 @@ func (jm JobsModel) SyncRunnerJobs(userID string, runnerID uint) error {
 	if err != nil {
 		return err
 	}
-
+	prjs := []projects.Project{}
 	jobs := make([]Job, 0, len(glJobs))
 	for _, job := range glJobs {
 		translated, err := TranslateGLJobToJob(userID, job)
@@ -138,10 +139,23 @@ func (jm JobsModel) SyncRunnerJobs(userID string, runnerID uint) error {
 		}
 		translated.RunnerID = int(runnerID)
 		jobs = append(jobs, *translated)
+		prj := projects.Project{
+			ID:             job.Project.ID,
+			Name:           job.Project.Name,
+			InternalUserID: userID,
+		}
+		prjs = append(prjs, prj)
 	}
 	resp := jm.db.Clauses(clause.OnConflict{
 		UpdateAll: true,
 	}).Create(jobs)
+	if resp.Error != nil {
+		return resp.Error
+	}
+	// this is bad, either need to create a system to notify projectsModel or move the sync section to a stand alone package
+	resp = jm.db.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(prjs)
 	if resp.Error != nil {
 		return resp.Error
 	}
