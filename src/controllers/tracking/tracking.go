@@ -1,7 +1,7 @@
 package tracking
 
 import (
-	trackingModel "back/pkg/models/tracking"
+	trackingModel "back/src/models/tracking"
 	"fmt"
 
 	"github.com/gin-contrib/sessions"

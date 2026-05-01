@@ -1,7 +1,7 @@
 package tracking
 
 import (
-	"back/pkg/database"
+	"back/src/database"
 	"fmt"
 	"math"
 	"time"

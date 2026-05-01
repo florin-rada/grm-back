@@ -1,7 +1,7 @@
 package projects
 
 import (
-	"back/pkg/database"
+	"back/src/database"
 	"fmt"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
@@ -21,7 +21,7 @@ func NewProjectModel(db *gorm.DB, client *gl.Client) *ProjectModel {
 }
 
 type Project struct {
-	ID             int    `gorm:"id,primarykey" json:"id"`
+	ID             int64  `gorm:"id,primarykey" json:"id"`
 	InternalUserID string `gorm:"internal_user_id" json:"internal_user_id"`
 	Name           string `gorm:"name" json:"name"`
 }

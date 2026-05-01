@@ -1,13 +1,13 @@
 package main
 
 import (
-	"back/pkg/database"
-	"back/pkg/models/gitlab"
-	"back/pkg/models/jobs"
-	"back/pkg/models/keycloak"
-	"back/pkg/models/queue"
-	"back/pkg/models/runners"
-	users_model "back/pkg/models/users"
+	"back/src/database"
+	"back/src/models/gitlab"
+	"back/src/models/jobs"
+	"back/src/models/keycloak"
+	"back/src/models/queue"
+	"back/src/models/runners"
+	users_model "back/src/models/users"
 	"errors"
 	"flag"
 	"fmt"
@@ -94,13 +94,13 @@ func updateUserData(rr *runners.RunnerRepository) error {
 	}
 }
 
-func addUpdateStatusesToQueue(qm queue.QueueManager, gitClient *gl.Client, rr *runners.RunnerRepository, runnerID uint) {
+func addUpdateStatusesToQueue(qm queue.QueueManager, gitClient *gl.Client, rr *runners.RunnerRepository, runnerID int64) {
 	qm.AddToQueue(func(...interface{}) {
 		rr.SyncRunnerStatus(gitClient, runnerID)
 	})
 }
 
-func addUpdateRunnerJobsToQueue(qm queue.QueueManager, userID string, jm *jobs.JobsModel, runnerID uint) {
+func addUpdateRunnerJobsToQueue(qm queue.QueueManager, userID string, jm *jobs.JobsModel, runnerID int64) {
 	qm.AddToQueue(func(...interface{}) {
 		jm.SyncRunnerJobs(userID, runnerID)
 	})
@@ -143,9 +143,9 @@ func main() {
 			jm := jobs.NewJobsModel(database.PublicDB, gitClient)
 			for _, r := range ud.RunnersToSync {
 				// first, update the runner statuses
-				addUpdateStatusesToQueue(qm, gitClient, rr, uint(r.ID))
+				addUpdateStatusesToQueue(qm, gitClient, rr, r.ID)
 				// second, we update the jobs
-				addUpdateRunnerJobsToQueue(qm, userID, jm, uint(r.ID))
+				addUpdateRunnerJobsToQueue(qm, userID, jm, r.ID)
 			}
 		}
 	}

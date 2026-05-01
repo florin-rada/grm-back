@@ -1,11 +1,11 @@
 package jobs
 
 import (
-	consterrors "back/pkg/const_errors"
-	db "back/pkg/database"
-	"back/pkg/models/gitlab"
-	"back/pkg/models/projects"
-	"back/pkg/models/synchronized"
+	consterrors "back/src/const_errors"
+	db "back/src/database"
+	"back/src/models/gitlab"
+	"back/src/models/projects"
+	"back/src/models/synchronized"
 	"fmt"
 	"time"
 
@@ -29,14 +29,14 @@ func NewJobsModel(db *gorm.DB, client *gl.Client) *JobsModel {
 // Job represents a internal row of a job
 type Job struct {
 	InternalUserId string    `json:"internal_user_id,omitempty" gorm:"internal_user_id,unique,index"`
-	ID             int       `json:"id" gorm:"id,unique,index" `
+	ID             int64     `json:"id" gorm:"id,unique,index" `
 	Name           string    `json:"name" gorm:"name"`
 	CreatedAt      time.Time `json:"created_at" gorm:"created_at"`
 	StartedAt      time.Time `json:"started_at" gorm:"started_at"`
 	FinishedAt     time.Time `json:"finished_at" gorm:"finished_at"`
-	PipelineID     int       `json:"pipeline_id" gorm:"pipeline_id"`
-	ProjectID      int       `json:"project_id" gorm:"project_Id"`
-	RunnerID       int       `json:"runner_id" gorm:"runner_id"`
+	PipelineID     int64     `json:"pipeline_id" gorm:"pipeline_id"`
+	ProjectID      int64     `json:"project_id" gorm:"project_Id"`
+	RunnerID       int64     `json:"runner_id" gorm:"runner_id"`
 	Branch         string    `json:"branch" gorm:"branch"`
 	Duration       float64   `json:"duration" gorm:"duration"`
 	QueuedDuration float64   `json:"queued_duration" gorm:"queued_duration"`
@@ -55,12 +55,12 @@ type JobSearchArgs struct {
 	StartedAtEnd    *time.Time `json:"started_at_end,omitempty"`
 	FinishedAtStart *time.Time `json:"finished_at_start,omitempty"`
 	FinishedAtEnd   *time.Time `json:"finished_at_end,omitempty"`
-	PipelineID      int        `json:"pipeline_id,omitempty"`
-	ProjectID       int        `json:"project_id,omitempty"`
+	PipelineID      int64      `json:"pipeline_id,omitempty"`
+	ProjectID       int64      `json:"project_id,omitempty"`
 	Branch          string     `json:"branch,omitempty"`
 	Stage           string     `json:"stage,omitempty"`
-	Page            int        `json:"page,omitempty"`
-	PerPage         int        `json:"per_page,omitempty"`
+	Page            int64      `json:"page,omitempty"`
+	PerPage         int64      `json:"per_page,omitempty"`
 	Status          string     `json:"status,omitempty"`
 }
 
@@ -68,8 +68,8 @@ type StatisticsSearchArgs struct {
 	Names          []string   `json:"names,omitempty"`
 	CreatedAtStart *time.Time `json:"created_at_start"`
 	CreatedAtEnd   *time.Time `json:"created_at_end"`
-	RunnerIDs      []int      `json:"runner_ids,omitempty"`
-	ProjectIDs     []int      `json:"project_id,omitempty"`
+	RunnerIDs      []int64    `json:"runner_ids,omitempty"`
+	ProjectIDs     []int64    `json:"project_ids,omitempty"`
 	Branches       []string   `json:"branches,omitempty"`
 	Statuses       []string   `json:"statuses,omitempty"`
 	//Stage          string     `json:"stage,omitempty"`
@@ -124,7 +124,7 @@ func (jm JobsModel) GetRunnerJobs(idRunner uint, idUser string, page int, perPag
 	return jobs, nil
 }
 
-func (jm JobsModel) SyncRunnerJobs(userID string, runnerID uint) error {
+func (jm JobsModel) SyncRunnerJobs(userID string, runnerID int64) error {
 	fmt.Printf("Starting updating runner jobs for runner %d\n", runnerID)
 	glJobs, _, err := gitlab.GetRunnerJobs(jm.client, int(runnerID), "", 0, 20)
 	if err != nil {
@@ -137,7 +137,7 @@ func (jm JobsModel) SyncRunnerJobs(userID string, runnerID uint) error {
 		if err != nil {
 			return err
 		}
-		translated.RunnerID = int(runnerID)
+		translated.RunnerID = int64(runnerID)
 		jobs = append(jobs, *translated)
 		prj := projects.Project{
 			ID:             job.Project.ID,
@@ -212,7 +212,7 @@ func (jm JobsModel) SearchJobsForStatistics(userID string, params StatisticsSear
 	return jobs, nil
 }
 
-func (jm JobsModel) SearchRunnerJobs(idRunner uint, userID string, params JobSearchArgs) ([]Job, error) {
+func (jm JobsModel) SearchRunnerJobs(idRunner int64, userID string, params JobSearchArgs) ([]Job, error) {
 	tr := jm.db.Model(&Job{})
 	tr = tr.Where("runner_id=?", idRunner)
 	tr = tr.Where("internal_user_id=?", userID)
@@ -260,7 +260,7 @@ func (jm JobsModel) SearchRunnerJobs(idRunner uint, userID string, params JobSea
 		params.PerPage = 25
 	}
 	if params.Page > 0 {
-		tr = tr.Offset(params.Page * params.PerPage).Limit(params.PerPage)
+		tr = tr.Offset(int(params.Page * params.PerPage)).Limit(int(params.PerPage))
 	}
 
 	jobs := []Job{}
@@ -271,7 +271,7 @@ func (jm JobsModel) SearchRunnerJobs(idRunner uint, userID string, params JobSea
 	return jobs, nil
 }
 
-func (jm JobsModel) SyncJobsBetweenDates(client *gl.Client, userID string, runnerID int, startDate *time.Time, endDate *time.Time) error {
+func (jm JobsModel) SyncJobsBetweenDates(client *gl.Client, userID string, runnerID int64, startDate *time.Time, endDate *time.Time) error {
 	if client == nil {
 		return consterrors.ErrNoGitClient
 	}
@@ -316,7 +316,7 @@ func (jm JobsModel) SyncJobsBetweenDates(client *gl.Client, userID string, runne
 	}
 	err = sm.SaveSyncedDates(userID, runnerID, *notSyncedStartDate, *notSyncedEndDate)
 	if err != nil {
-		return nil
+		return err
 	}
 	return nil
 }

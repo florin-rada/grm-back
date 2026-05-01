@@ -1,15 +1,15 @@
 package main
 
 import (
-	"back/pkg/controllers/login"
-	"back/pkg/controllers/mock_data"
-	"back/pkg/controllers/offers"
-	"back/pkg/controllers/runners"
-	"back/pkg/controllers/tracking"
-	"back/pkg/controllers/users"
-	"back/pkg/database"
-	glm "back/pkg/models/gitlab"
-	um "back/pkg/models/users"
+	"back/src/controllers/login"
+	"back/src/controllers/mock_data"
+	"back/src/controllers/offers"
+	"back/src/controllers/runners"
+	"back/src/controllers/tracking"
+	"back/src/controllers/users"
+	"back/src/database"
+	glm "back/src/models/gitlab"
+	um "back/src/models/users"
 	"os"
 	"time"
 

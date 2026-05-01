@@ -1,7 +1,7 @@
 package login
 
 import (
-	"back/pkg/models/keycloak"
+	"back/src/models/keycloak"
 	"errors"
 	"fmt"
 	"net/http"

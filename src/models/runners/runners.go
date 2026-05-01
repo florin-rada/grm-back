@@ -1,9 +1,9 @@
 package runners
 
 import (
-	consterrors "back/pkg/const_errors"
-	db "back/pkg/database"
-	"back/pkg/models/gitlab"
+	consterrors "back/src/const_errors"
+	db "back/src/database"
+	"back/src/models/gitlab"
 	"errors"
 	"fmt"
 	"strings"
@@ -20,7 +20,7 @@ type RunnerRepository struct {
 
 type Runner struct {
 	InternalUserID string    `json:"internal_user_id,omitempty" gorm:"internal_user_id,primaryKey"`
-	ID             int       `json:"id" gorm:"id,primaryKey;autoIncrement:false"`
+	ID             int64     `json:"id" gorm:"id,primaryKey;autoIncrement:false"`
 	Description    string    `json:"description" gorm:"description"`
 	Active         bool      `json:"active" gorm:"active"`
 	Paused         bool      `json:"paused" gorm:"paused"`
@@ -32,9 +32,9 @@ type Runner struct {
 	IsShared       bool      `json:"is_shared" gorm:"is_shared"`
 	Platform       string    `json:"platform" gorm:"platform"`
 	Locked         bool      `json:"locked" gorm:"locked"`
-	MaximumTimeout int       `json:"maximum_timeout" gorm:"maximum_timeout"`
+	MaximumTimeout int64     `json:"maximum_timeout" gorm:"maximum_timeout"`
 	ContactedAt    time.Time `json:"contacted_at" gorm:"contacted_at"`
-	MaxConcurrent  int       `json:"max_concurent" gorm:"max_concurrent"`
+	MaxConcurrent  int64     `json:"max_concurent" gorm:"max_concurrent"`
 	SyncActive     bool      `json:"sync_active" gorm:"sync_active"`
 }
 
@@ -76,7 +76,7 @@ func (rr RunnerRepository) GetRunnersToSync(userID string, maxRunners int) ([]Ru
 	return runners, nil
 }
 
-func (rr RunnerRepository) SyncRunnerStatus(client *gl.Client, runnerID uint) error {
+func (rr RunnerRepository) SyncRunnerStatus(client *gl.Client, runnerID int64) error {
 	fmt.Printf("Starting updating runner status for %d\n", runnerID)
 	r, err := rr.GetRunner(runnerID)
 	if err != nil {
@@ -102,7 +102,7 @@ func (rr RunnerRepository) SyncRunnerStatus(client *gl.Client, runnerID uint) er
 	return rr.UpdateRunner(r)
 }
 
-func (rr RunnerRepository) GetRunner(runnerID uint) (Runner, error) {
+func (rr RunnerRepository) GetRunner(runnerID int64) (Runner, error) {
 	r := Runner{}
 	resp := rr.db.Find(&r, runnerID)
 	if resp.Error != nil {
@@ -143,14 +143,14 @@ func (rr RunnerRepository) GetUserRunners(userID string) ([]Runner, error) {
 // AddRunnerForUser stores a runner's details to the local database
 // it accepts the runnerID and based on this, takes the runner details from gitlab
 // than stores the relevant runner details to the database
-func (rr RunnerRepository) AddRunnerForUser(client *gl.Client, userID string, runnerId int) error {
+func (rr RunnerRepository) AddRunnerForUser(client *gl.Client, userID string, runnerID int64) error {
 	if client == nil {
 		return consterrors.ErrNoGitClient
 	}
 	if userID == "" {
 		return consterrors.ErrNoUserId
 	}
-	rd, _, err := client.Runners.GetRunnerDetails(runnerId)
+	rd, _, err := client.Runners.GetRunnerDetails(runnerID)
 	if err != nil {
 		return err
 	}
@@ -169,10 +169,10 @@ func (rr RunnerRepository) AddRunnerForUser(client *gl.Client, userID string, ru
 	return nil
 }
 
-func (rr RunnerRepository) DeleteRunner(runnerID uint, userID string) error {
+func (rr RunnerRepository) DeleteRunner(runnerID int64, userID string) error {
 	resp := rr.db.Delete((&Runner{
 		InternalUserID: userID,
-		ID:             int(runnerID),
+		ID:             runnerID,
 	}))
 	return resp.Error
 }

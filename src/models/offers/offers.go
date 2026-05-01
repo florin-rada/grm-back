@@ -1,8 +1,8 @@
 package offers
 
 import (
-	consterrors "back/pkg/const_errors"
-	"back/pkg/database"
+	consterrors "back/src/const_errors"
+	"back/src/database"
 	"errors"
 	"fmt"
 

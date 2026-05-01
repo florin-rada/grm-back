@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"back/pkg/models/offers"
+	"back/src/models/offers"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

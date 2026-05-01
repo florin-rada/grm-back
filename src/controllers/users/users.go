@@ -1,11 +1,11 @@
 package users
 
 import (
-	consterrors "back/pkg/const_errors"
-	"back/pkg/models/gitlab"
-	"back/pkg/models/keycloak"
-	"back/pkg/models/users"
-	"back/pkg/utils"
+	consterrors "back/src/const_errors"
+	"back/src/models/gitlab"
+	"back/src/models/keycloak"
+	"back/src/models/users"
+	"back/src/utils"
 	"errors"
 	"net/http"
 

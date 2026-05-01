@@ -1,7 +1,7 @@
 package synchronized
 
 import (
-	"back/pkg/database"
+	"back/src/database"
 	"errors"
 	"fmt"
 	"time"
@@ -24,7 +24,7 @@ func NewSynchronizedModel(db *gorm.DB) *SynchronizedModel {
 	return &SynchronizedModel{db: db}
 }
 
-func (sm *SynchronizedModel) GetMinMaxUnsyncedDates(userID string, runnerID int, startDate *time.Time, endDate *time.Time) (*time.Time, *time.Time, error) {
+func (sm *SynchronizedModel) GetMinMaxUnsyncedDates(userID string, runnerID int64, startDate *time.Time, endDate *time.Time) (*time.Time, *time.Time, error) {
 	if startDate == nil || endDate == nil {
 		return nil, nil, errors.New("no start date or end date")
 	}
@@ -63,17 +63,18 @@ func (sm *SynchronizedModel) GetMinMaxUnsyncedDates(userID string, runnerID int,
 	return &notSyncedDates[0], &notSyncedDates[len(notSyncedDates)-1], nil
 }
 
-func (sm *SynchronizedModel) SaveSyncedDates(userID string, runnerID int, startDate time.Time, endDate time.Time) error {
+func (sm *SynchronizedModel) SaveSyncedDates(userID string, runnerID int64, startDate time.Time, endDate time.Time) error {
 	numDays := endDate.Sub(startDate).Hours() / 24
 	syncDates := make([]Synchronized, 0, int(numDays))
 	currentDay := startDate
 	for currentDay.Before(endDate) {
 		syncDate := Synchronized{
 			UserID:   userID,
-			RunnerID: int64(runnerID),
+			RunnerID: runnerID,
 			Date:     currentDay,
 		}
 		syncDates = append(syncDates, syncDate)
+		currentDay = currentDay.Add(time.Hour * 24)
 	}
 	resp := sm.db.Clauses(clause.OnConflict{
 		UpdateAll: true,
