@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/xanzy/go-gitlab"
+	gl "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,11 +15,11 @@ func GetUserIdFromContext(ctx *gin.Context) string {
 	return userID
 }
 
-func GetGitClientFromContext(ctx *gin.Context) *gitlab.Client {
+func GetGitClientFromContext(ctx *gin.Context) *gl.Client {
 	gitClientI, exists := ctx.Get("git_client")
 	if !exists {
 		return nil
 	}
-	gitClient := gitClientI.(*gitlab.Client)
+	gitClient := gitClientI.(*gl.Client)
 	return gitClient
 }

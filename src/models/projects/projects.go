@@ -4,7 +4,7 @@ import (
 	"back/pkg/database"
 	"fmt"
 
-	gl "github.com/xanzy/go-gitlab"
+	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"
 )
 

@@ -17,7 +17,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	gl "github.com/xanzy/go-gitlab"
+	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"
 )
 

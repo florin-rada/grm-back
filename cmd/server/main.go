@@ -13,9 +13,10 @@ import (
 	"os"
 	"time"
 
+	gl "gitlab.com/gitlab-org/api/client-go/v2"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
-	"github.com/xanzy/go-gitlab"
 
 	//"github.com/gin-contrib/sessions/cookie"
 	gormsessions "github.com/gin-contrib/sessions/gorm"
@@ -166,7 +167,7 @@ func main() {
 				})
 				return
 			}
-			gitClient := gitClientI.(*gitlab.Client)
+			gitClient := gitClientI.(*gl.Client)
 
 			jobs, _, err := glm.GetAllRunners(gitClient, 1, 20)
 			if err != nil {

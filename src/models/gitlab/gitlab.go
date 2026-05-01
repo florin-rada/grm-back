@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	gl "github.com/xanzy/go-gitlab"
+	gl "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 // TODO: replace *gl.CLient with a interface matching the gl.Client functions for unittesting purposes

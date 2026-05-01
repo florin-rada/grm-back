@@ -11,7 +11,7 @@ The backends role is to handle the interactions between the user and the gitlab 
 
 [Google's UUID](github.com/google/uuid) - used for unique identifiers
 
-[Go-Gitlab from Xanzy](github.com/xanzy/go-gitlab) - used for interacting with the gitlab rest api
+[Go-Gitlab from Xanzy](gitlab.com/gitlab-org/api/client-go/v2) - used for interacting with the gitlab rest api
 
 [Gorm ORM](gorm.io/gorm) - used for interacting with the mysql database
 

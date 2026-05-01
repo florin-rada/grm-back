@@ -10,8 +10,9 @@ import (
 	"strconv"
 	"time"
 
+	gl "gitlab.com/gitlab-org/api/client-go/v2"
+
 	"github.com/gin-gonic/gin"
-	"github.com/xanzy/go-gitlab"
 	"gorm.io/gorm"
 )
 
@@ -38,7 +39,7 @@ func (rc RunnerController) ListUserRunnersFromGit(ctx *gin.Context) {
 	}
 	var foundAll bool
 	var page int = 1
-	runners := []*gitlab.Runner{}
+	runners := []*gl.Runner{}
 
 	for !foundAll {
 		receivedRunners, _, err := glModel.GetAllRunners(gitClient, page, 100)
