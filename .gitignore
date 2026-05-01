@@ -8,3 +8,4 @@ bin
 *.exe
 *.prof
 *.sum
+pkg/**/mod/
