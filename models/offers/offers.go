@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	consterrors "github.com/florin-rada/grm-back/src/const_errors"
-	"github.com/florin-rada/grm-back/src/database"
+	consterrors "github.com/florin-rada/grm-back/const_errors"
+	"github.com/florin-rada/grm-back/database"
 
 	"gorm.io/gorm"
 )

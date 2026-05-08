@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	db "github.com/florin-rada/grm-back/src/database"
+	db "github.com/florin-rada/grm-back/database"
 )
 
 type Profile struct {

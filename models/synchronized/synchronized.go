@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/florin-rada/grm-back/src/database"
+	"github.com/florin-rada/grm-back/database"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"time"
 
-	consterrors "github.com/florin-rada/grm-back/src/const_errors"
-	glModel "github.com/florin-rada/grm-back/src/models/gitlab"
-	jobsModel "github.com/florin-rada/grm-back/src/models/jobs"
-	"github.com/florin-rada/grm-back/src/models/runners"
-	"github.com/florin-rada/grm-back/src/utils"
+	consterrors "github.com/florin-rada/grm-back/const_errors"
+	glModel "github.com/florin-rada/grm-back/models/gitlab"
+	jobsModel "github.com/florin-rada/grm-back/models/jobs"
+	"github.com/florin-rada/grm-back/models/runners"
+	"github.com/florin-rada/grm-back/utils"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 

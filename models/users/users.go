@@ -8,11 +8,11 @@ import (
 	re "regexp"
 	"time"
 
-	consterrors "github.com/florin-rada/grm-back/src/const_errors"
-	db "github.com/florin-rada/grm-back/src/database"
-	"github.com/florin-rada/grm-back/src/models/gitlab"
-	"github.com/florin-rada/grm-back/src/models/keycloak"
-	"github.com/florin-rada/grm-back/src/models/offers"
+	consterrors "github.com/florin-rada/grm-back/const_errors"
+	db "github.com/florin-rada/grm-back/database"
+	"github.com/florin-rada/grm-back/models/gitlab"
+	"github.com/florin-rada/grm-back/models/keycloak"
+	"github.com/florin-rada/grm-back/models/offers"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

@@ -1,10 +1,11 @@
 package login
 
 import (
-	"github.com/florin-rada/grm-back/src/models/keycloak"
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/florin-rada/grm-back/models/keycloak"
 
 	"github.com/gin-contrib/sessions"
 	//_ "github.com/gin-contrib/sessions/gorm"

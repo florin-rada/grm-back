@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	consterrors "github.com/florin-rada/grm-back/src/const_errors"
-	db "github.com/florin-rada/grm-back/src/database"
-	"github.com/florin-rada/grm-back/src/models/gitlab"
-	"github.com/florin-rada/grm-back/src/models/projects"
-	"github.com/florin-rada/grm-back/src/models/synchronized"
+	consterrors "github.com/florin-rada/grm-back/const_errors"
+	db "github.com/florin-rada/grm-back/database"
+	"github.com/florin-rada/grm-back/models/gitlab"
+	"github.com/florin-rada/grm-back/models/projects"
+	"github.com/florin-rada/grm-back/models/synchronized"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"

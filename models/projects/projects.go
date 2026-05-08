@@ -3,7 +3,7 @@ package projects
 import (
 	"fmt"
 
-	"github.com/florin-rada/grm-back/src/database"
+	"github.com/florin-rada/grm-back/database"
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"
 )

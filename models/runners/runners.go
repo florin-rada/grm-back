@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	consterrors "github.com/florin-rada/grm-back/src/const_errors"
-	db "github.com/florin-rada/grm-back/src/database"
-	"github.com/florin-rada/grm-back/src/models/gitlab"
+	consterrors "github.com/florin-rada/grm-back/const_errors"
+	db "github.com/florin-rada/grm-back/database"
+	"github.com/florin-rada/grm-back/models/gitlab"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"

@@ -4,11 +4,11 @@ import (
 	"errors"
 	"net/http"
 
-	consterrors "github.com/florin-rada/grm-back/src/const_errors"
-	"github.com/florin-rada/grm-back/src/models/gitlab"
-	"github.com/florin-rada/grm-back/src/models/keycloak"
-	"github.com/florin-rada/grm-back/src/models/users"
-	"github.com/florin-rada/grm-back/src/utils"
+	consterrors "github.com/florin-rada/grm-back/const_errors"
+	"github.com/florin-rada/grm-back/models/gitlab"
+	"github.com/florin-rada/grm-back/models/keycloak"
+	"github.com/florin-rada/grm-back/models/users"
+	"github.com/florin-rada/grm-back/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

@@ -3,7 +3,7 @@ package tracking
 import (
 	"fmt"
 
-	trackingModel "github.com/florin-rada/grm-back/src/models/tracking"
+	trackingModel "github.com/florin-rada/grm-back/models/tracking"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
