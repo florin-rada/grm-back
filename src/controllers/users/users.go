@@ -1,13 +1,14 @@
 package users
 
 import (
-	consterrors "back/src/const_errors"
-	"back/src/models/gitlab"
-	"back/src/models/keycloak"
-	"back/src/models/users"
-	"back/src/utils"
 	"errors"
 	"net/http"
+
+	consterrors "github.com/florin-rada/grm-back/src/const_errors"
+	"github.com/florin-rada/grm-back/src/models/gitlab"
+	"github.com/florin-rada/grm-back/src/models/keycloak"
+	"github.com/florin-rada/grm-back/src/models/users"
+	"github.com/florin-rada/grm-back/src/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

@@ -1,13 +1,6 @@
 package main
 
 import (
-	"back/src/database"
-	"back/src/models/gitlab"
-	"back/src/models/jobs"
-	"back/src/models/keycloak"
-	"back/src/models/queue"
-	"back/src/models/runners"
-	users_model "back/src/models/users"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,6 +9,14 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"time"
+
+	"github.com/florin-rada/grm-back/src/database"
+	"github.com/florin-rada/grm-back/src/models/gitlab"
+	"github.com/florin-rada/grm-back/src/models/jobs"
+	"github.com/florin-rada/grm-back/src/models/keycloak"
+	"github.com/florin-rada/grm-back/src/models/queue"
+	"github.com/florin-rada/grm-back/src/models/runners"
+	users_model "github.com/florin-rada/grm-back/src/models/users"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"

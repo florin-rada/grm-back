@@ -1,19 +1,20 @@
 package pipelines
 
 import (
-	db "back/src/database"
 	"errors"
 	"fmt"
 	"time"
+
+	db "github.com/florin-rada/grm-back/src/database"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 type Pipeline struct {
-	InternalUserId int       `json:"internal_user_id,omitempty" gorm:"internal_user_id"`
-	ID             int       `json:"id" gorm:"id"`
-	IID            int       `json:"iid" gorm:"iid"`
-	ProjectID      int       `json:"project_id" gorm:"project_id"`
+	InternalUserId int64     `json:"internal_user_id,omitempty" gorm:"internal_user_id"`
+	ID             int64     `json:"id" gorm:"id"`
+	IID            int64     `json:"iid" gorm:"iid"`
+	ProjectID      int64     `json:"project_id" gorm:"project_id"`
 	Ref            string    `json:"ref" gorm:"ref"`
 	Status         string    `json:"status" gorm:"status"`
 	URL            string    `json:"url" gorm:"url"`

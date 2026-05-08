@@ -1,8 +1,9 @@
 package tracking
 
 import (
-	trackingModel "back/src/models/tracking"
 	"fmt"
+
+	trackingModel "github.com/florin-rada/grm-back/src/models/tracking"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"

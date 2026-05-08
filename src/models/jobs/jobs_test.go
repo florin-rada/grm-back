@@ -69,7 +69,7 @@ func (suite *JobsModelSuite) TestGetRunnerJobs() {
 			AddRow("user123", 2, "Job 2", time.Now(), time.Now(), time.Now(), 2, 2, 1, "branch", 15.0, 6.0, "url2", "stage2"))
 
 	// Call the function being tested
-	jobs, err := suite.model.GetRunnerJobs(idRunner, idUser, page, perPage)
+	jobs, err := suite.model.GetRunnerJobs(idRunner, idUser, page, perPage, "asc")
 
 	// Assert the results
 	assert.NoError(suite.T(), err)

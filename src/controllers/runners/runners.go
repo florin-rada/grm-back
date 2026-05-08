@@ -1,14 +1,15 @@
 package runners
 
 import (
-	consterrors "back/src/const_errors"
-	glModel "back/src/models/gitlab"
-	jobsModel "back/src/models/jobs"
-	"back/src/models/runners"
-	"back/src/utils"
 	"net/http"
 	"strconv"
 	"time"
+
+	consterrors "github.com/florin-rada/grm-back/src/const_errors"
+	glModel "github.com/florin-rada/grm-back/src/models/gitlab"
+	jobsModel "github.com/florin-rada/grm-back/src/models/jobs"
+	"github.com/florin-rada/grm-back/src/models/runners"
+	"github.com/florin-rada/grm-back/src/utils"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 

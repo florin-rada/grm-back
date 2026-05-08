@@ -1,10 +1,11 @@
 package offers
 
 import (
-	consterrors "back/src/const_errors"
-	"back/src/database"
 	"errors"
 	"fmt"
+
+	consterrors "github.com/florin-rada/grm-back/src/const_errors"
+	"github.com/florin-rada/grm-back/src/database"
 
 	"gorm.io/gorm"
 )

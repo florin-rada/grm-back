@@ -1,9 +1,9 @@
 package projects
 
 import (
-	"back/src/database"
 	"fmt"
 
+	"github.com/florin-rada/grm-back/src/database"
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"
 )

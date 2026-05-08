@@ -1,13 +1,14 @@
 package jobs
 
 import (
-	consterrors "back/src/const_errors"
-	db "back/src/database"
-	"back/src/models/gitlab"
-	"back/src/models/projects"
-	"back/src/models/synchronized"
 	"fmt"
 	"time"
+
+	consterrors "github.com/florin-rada/grm-back/src/const_errors"
+	db "github.com/florin-rada/grm-back/src/database"
+	"github.com/florin-rada/grm-back/src/models/gitlab"
+	"github.com/florin-rada/grm-back/src/models/projects"
+	"github.com/florin-rada/grm-back/src/models/synchronized"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"

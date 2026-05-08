@@ -1,17 +1,18 @@
 package main
 
 import (
-	"back/src/controllers/login"
-	"back/src/controllers/mock_data"
-	"back/src/controllers/offers"
-	"back/src/controllers/runners"
-	"back/src/controllers/tracking"
-	"back/src/controllers/users"
-	"back/src/database"
-	glm "back/src/models/gitlab"
-	um "back/src/models/users"
 	"os"
 	"time"
+
+	"github.com/florin-rada/grm-back/src/controllers/login"
+	"github.com/florin-rada/grm-back/src/controllers/mock_data"
+	"github.com/florin-rada/grm-back/src/controllers/offers"
+	"github.com/florin-rada/grm-back/src/controllers/runners"
+	"github.com/florin-rada/grm-back/src/controllers/tracking"
+	"github.com/florin-rada/grm-back/src/controllers/users"
+	"github.com/florin-rada/grm-back/src/database"
+	glm "github.com/florin-rada/grm-back/src/models/gitlab"
+	um "github.com/florin-rada/grm-back/src/models/users"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 

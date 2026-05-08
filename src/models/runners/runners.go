@@ -1,13 +1,14 @@
 package runners
 
 import (
-	consterrors "back/src/const_errors"
-	db "back/src/database"
-	"back/src/models/gitlab"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	consterrors "github.com/florin-rada/grm-back/src/const_errors"
+	db "github.com/florin-rada/grm-back/src/database"
+	"github.com/florin-rada/grm-back/src/models/gitlab"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"

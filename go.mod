@@ -1,4 +1,4 @@
-module back
+module github.com/florin-rada/grm-back
 
 go 1.26
 

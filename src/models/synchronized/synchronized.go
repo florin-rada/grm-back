@@ -1,11 +1,11 @@
 package synchronized
 
 import (
-	"back/src/database"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/florin-rada/grm-back/src/database"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

@@ -1,7 +1,7 @@
 package login
 
 import (
-	"back/src/models/keycloak"
+	"github.com/florin-rada/grm-back/src/models/keycloak"
 	"errors"
 	"fmt"
 	"net/http"

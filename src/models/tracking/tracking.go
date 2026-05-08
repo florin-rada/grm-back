@@ -1,10 +1,11 @@
 package tracking
 
 import (
-	"back/src/database"
 	"fmt"
 	"math"
 	"time"
+
+	"github.com/florin-rada/grm-back/src/database"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

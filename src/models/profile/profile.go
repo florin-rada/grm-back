@@ -1,10 +1,11 @@
 package profile
 
 import (
-	db "back/src/database"
 	"errors"
 	"fmt"
 	"time"
+
+	db "github.com/florin-rada/grm-back/src/database"
 )
 
 type Profile struct {
