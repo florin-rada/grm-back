@@ -6,9 +6,10 @@ import (
 	"time"
 
 	consterrors "github.com/florin-rada/grm-back/const_errors"
-	glModel "github.com/florin-rada/grm-back/models/gitlab"
 	jobsModel "github.com/florin-rada/grm-back/models/jobs"
-	"github.com/florin-rada/grm-back/models/runners"
+	"github.com/florin-rada/grm-back/models/synchronized"
+	jobsservice "github.com/florin-rada/grm-back/services/jobs_service"
+	runnersservice "github.com/florin-rada/grm-back/services/runners_service"
 	"github.com/florin-rada/grm-back/utils"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
@@ -19,13 +20,15 @@ import (
 
 type RunnerController struct {
 	db *gorm.DB
-	rr *runners.RunnerRepository
+	rs *runnersservice.RunnersService
+	js *jobsservice.JobsService
 }
 
 func NewRunnerController(db *gorm.DB) *RunnerController {
 	return &RunnerController{
 		db: db,
-		rr: runners.NewRunnerRepository(db),
+		rs: runnersservice.NewRunnersService(runnersservice.NewRunnerRepository(db)),
+		js: jobsservice.NewJobsService(jobsservice.NewJobsRepository(db), synchronized.NewSynchronizedRepository(db)),
 	}
 }
 
@@ -43,7 +46,7 @@ func (rc RunnerController) ListUserRunnersFromGit(ctx *gin.Context) {
 	runners := []*gl.Runner{}
 
 	for !foundAll {
-		receivedRunners, _, err := glModel.GetAllRunners(gitClient, page, 100)
+		receivedRunners, _, err := rc.rs.GetAllRunners(gitClient, page, 100)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
 				"error":    err.Error(),
@@ -71,7 +74,7 @@ func (rc RunnerController) ListUserRunners(ctx *gin.Context) {
 		})
 		return
 	}
-	runners, err := rc.rr.GetUserRunners(userID)
+	runners, err := rc.rs.GetUserRunners(userID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
@@ -118,7 +121,7 @@ func (rc RunnerController) DeleteRunner(ctx *gin.Context) {
 		})
 		return
 	}
-	err = rc.rr.DeleteRunner(runnerID, userID)
+	err = rc.rs.DeleteRunner(runnerID, userID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
@@ -131,133 +134,6 @@ func (rc RunnerController) DeleteRunner(ctx *gin.Context) {
 		"response": "OK",
 	})
 
-}
-
-func (rc RunnerController) ListRunnerJobs(ctx *gin.Context) {
-	userID := utils.GetUserIdFromContext(ctx)
-	if userID == "" {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error":    consterrors.ErrNotLoggedIn.Error(),
-			"response": "",
-		})
-		return
-	}
-	client := utils.GetGitClientFromContext(ctx)
-	if client == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":    consterrors.ErrNoGitClient,
-			"response": "",
-		})
-		return
-	}
-	runnerIDStr := ctx.Param("id")
-	if runnerIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":    consterrors.ErrNoID.Error(),
-			"response": "",
-		})
-		return
-	}
-	runnerID, err := strconv.ParseInt(runnerIDStr, 10, 64)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":    consterrors.ErrNoID,
-			"response": "",
-		})
-		return
-	}
-	params := jobsModel.JobSearchArgs{}
-	err = ctx.BindJSON(params)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":    consterrors.ErrInvalidSearchCriteria.Error(),
-			"response": "",
-		})
-		return
-	}
-	jm := jobsModel.NewJobsModel(rc.db, client)
-	jobs, err := jm.SearchRunnerJobs(runnerID, userID, params)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error":    err.Error(),
-			"response": "",
-		})
-		return
-	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"error":    "",
-		"response": jobs,
-	})
-}
-
-func (rc RunnerController) GetLatestJobsForRunner(ctx *gin.Context) {
-	userID := utils.GetUserIdFromContext(ctx)
-	if userID == "" {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error":    consterrors.ErrNotLoggedIn.Error(),
-			"response": "",
-		})
-		return
-	}
-	client := utils.GetGitClientFromContext(ctx)
-	if client == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":    consterrors.ErrNoGitClient,
-			"response": "",
-		})
-		return
-	}
-	runnerIDStr := ctx.Param("id")
-	if runnerIDStr == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":    consterrors.ErrNoID.Error(),
-			"response": "",
-		})
-		return
-	}
-	runnerID, err := strconv.ParseInt(runnerIDStr, 10, 64)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":    consterrors.ErrNoID,
-			"response": "",
-		})
-		return
-	}
-	var numJobs int64 = 25
-	numJobsStr := ctx.Query("num_jobs")
-	if numJobsStr != "" {
-		numJobs, err = strconv.ParseInt(numJobsStr, 10, 64)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error":    consterrors.ErrInvalidNumJobs,
-				"response": "",
-			})
-			return
-		}
-	}
-	jobs := []jobsModel.Job{}
-	page := 0
-	jm := jobsModel.NewJobsModel(rc.db, client)
-	for len(jobs) < int(numJobs) {
-		tmpJobs, err := jm.GetRunnerJobs(uint(runnerID), userID, page, int(numJobs), "desc")
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error":    err.Error(),
-				"response": "",
-			})
-			return
-		}
-		if len(tmpJobs) == 0 {
-			break
-		}
-		jobs = append(jobs, tmpJobs...)
-		page++
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"error":    "",
-		"response": jobs,
-	})
 }
 
 func (rc RunnerController) AddRunnerForUser(ctx *gin.Context) {
@@ -304,7 +180,7 @@ func (rc RunnerController) AddRunnerForUser(ctx *gin.Context) {
 		})
 		return
 	}
-	err = rc.rr.AddRunnerForUser(gitClient, userID, runnerID)
+	err = rc.rs.AddRunnerForUser(gitClient, userID, runnerID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
@@ -352,7 +228,7 @@ func (rc RunnerController) UpdateRunner(ctx *gin.Context) {
 		return
 	}
 
-	r, err := rc.rr.GetRunner(runnerID)
+	r, err := rc.rs.GetRunner(runnerID)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":    err.Error(),
@@ -400,7 +276,7 @@ func (rc RunnerController) UpdateRunner(ctx *gin.Context) {
 	if args.Locked != nil {
 		r.Locked = *args.Locked
 	}
-	err = rc.rr.UpdateRunnerOnGit(client, r)
+	err = rc.rs.UpdateRunnerOnGit(client, r)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
@@ -408,7 +284,7 @@ func (rc RunnerController) UpdateRunner(ctx *gin.Context) {
 		})
 		return
 	}
-	err = rc.rr.UpdateRunner(r)
+	err = rc.rs.UpdateRunner(r)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
@@ -449,7 +325,7 @@ func (rc RunnerController) GetRunnerDetails(ctx *gin.Context) {
 		})
 		return
 	}
-	r, err := rc.rr.GetRunner(runnerID)
+	r, err := rc.rs.GetRunner(runnerID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),
@@ -509,66 +385,8 @@ func (rc RunnerController) GetStatisticsData(ctx *gin.Context) {
 		})
 		return
 	}
-	jm := jobsModel.NewJobsModel(rc.db, gitClient)
 
-	jobs, err := jm.SearchJobsForStatistics(userID, args)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error":    err.Error(),
-			"response": "",
-		})
-		return
-	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"error":    "",
-		"response": jobs,
-	})
-}
-
-func (rc RunnerController) TestGetJobsBetween(ctx *gin.Context) {
-	gitClient := utils.GetGitClientFromContext(ctx)
-	if gitClient == nil {
-		ctx.JSON(http.StatusOK, gin.H{
-			"error":    consterrors.ErrNoGitToken.Error(),
-			"response": "",
-		})
-		return
-	}
-
-	userID := utils.GetUserIdFromContext(ctx)
-	if userID == "" {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error":    consterrors.ErrNotLoggedIn.Error(),
-			"response": "",
-		})
-		return
-	}
-
-	startDate, err := time.Parse("2006-01-02", ctx.Query("start_date"))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error":    err.Error(),
-			"response": "",
-		})
-		return
-	}
-	endDate, err := time.Parse("2006-01-02", ctx.Query("end_date"))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error":    err.Error(),
-			"response": "",
-		})
-		return
-	}
-	runnerID, err := strconv.ParseInt(ctx.Query("runner_id"), 10, 64)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error":    err.Error(),
-			"response": "",
-		})
-		return
-	}
-	jobs, err := glModel.GetJobsBetween(gitClient, runnerID, &startDate, &endDate)
+	jobs, err := rc.js.SearchJobsForStatistics(userID, args)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":    err.Error(),

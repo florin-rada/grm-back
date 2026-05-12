@@ -4,17 +4,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/florin-rada/grm-back/controllers/jobs"
 	"github.com/florin-rada/grm-back/controllers/login"
 	"github.com/florin-rada/grm-back/controllers/mock_data"
-	"github.com/florin-rada/grm-back/controllers/offers"
 	"github.com/florin-rada/grm-back/controllers/runners"
 	"github.com/florin-rada/grm-back/controllers/tracking"
 	"github.com/florin-rada/grm-back/controllers/users"
 	"github.com/florin-rada/grm-back/database"
-	glm "github.com/florin-rada/grm-back/models/gitlab"
 	um "github.com/florin-rada/grm-back/models/users"
-
-	gl "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -87,8 +84,9 @@ func main() {
 		AllowWildcard: true,
 	}))
 
-	oc := offers.NewOfferController(database.PublicDB)
+	// oc := offers.NewOfferController(database.PublicDB)
 	rc := runners.NewRunnerController(database.PublicDB)
+	jc := jobs.NewJobsController(database.PublicDB)
 	tc := tracking.NewTrackingController(database.PublicDB)
 	r.POST("/login", login.ValidateLogin)
 	r.POST("/register", users.Register)
@@ -101,21 +99,21 @@ func main() {
 		authorized.GET("/git_runners", rc.ListUserRunnersFromGit)
 		authorized.GET("/git_details", users.GetUserGitDetails)
 		authorized.POST("/git_details", users.UpdateUserGitDetails)
-		authorized.POST("/test_git_details", users.TestGitConnection)
-		authorized.GET("/test_get_jobs", rc.TestGetJobsBetween)
+		//authorized.POST("/test_git_details", users.TestGitConnection)
+		authorized.GET("/test_get_jobs", jc.TestGetJobsBetween)
 		authorized.GET("/runners", rc.ListUserRunners)
 		authorized.GET("/runners/from_gitlab", rc.ListUserRunnersFromGit)
 		authorized.GET("/runners/:id", rc.GetRunnerDetails)
 		authorized.PUT("/runners/:id", rc.UpdateRunner)
 		authorized.DELETE("/runners/:id", rc.DeleteRunner)
-		authorized.GET("/runners/:id/latest_jobs", rc.GetLatestJobsForRunner)
-		authorized.GET("/runners/:id/jobs", rc.ListRunnerJobs)
+		authorized.GET("/runners/:id/latest_jobs", jc.GetLatestJobsForRunner)
+		authorized.GET("/runners/:id/jobs", jc.ListRunnerJobs)
 		authorized.POST("/runners/:id", rc.AddRunnerForUser)
-		authorized.GET("/offers", oc.GetOffers)
-		authorized.POST("/offers", oc.CreateOffer)
-		authorized.PUT("/offers/:id", oc.UpdateOffer)
-		authorized.DELETE("/offers/:id", oc.DeleteOffer)
-		authorized.GET("/offers/:id", oc.GetOffer)
+		// authorized.GET("/offers", oc.GetOffers)
+		// authorized.POST("/offers", oc.CreateOffer)
+		// authorized.PUT("/offers/:id", oc.UpdateOffer)
+		// authorized.DELETE("/offers/:id", oc.DeleteOffer)
+		// authorized.GET("/offers/:id", oc.GetOffer)
 		/* authorized.GET("/test_mt", func(c *gin.Context) {
 			replyChan := make(chan int, 3)
 			min := int(0)
@@ -138,56 +136,56 @@ func main() {
 				"generated_numbers": generatedNum,
 			})
 		}) */
-		authorized.GET("/get", func(c *gin.Context) {
-			userID, exists := c.Get("user_id")
-			if !exists {
-				c.JSON(500, gin.H{
-					"error": "user_info not found",
-				})
-				return
-			}
-			userEmail, exists := c.Get("email")
-			if !exists {
-				c.JSON(500, gin.H{
-					"error": "user email not found",
-				})
-				return
-			}
-			username, exists := c.Get("username")
-			if !exists {
-				c.JSON(500, gin.H{
-					"error": "username not found",
-				})
-				return
-			}
+		// authorized.GET("/get", func(c *gin.Context) {
+		// 	userID, exists := c.Get("user_id")
+		// 	if !exists {
+		// 		c.JSON(500, gin.H{
+		// 			"error": "user_info not found",
+		// 		})
+		// 		return
+		// 	}
+		// 	userEmail, exists := c.Get("email")
+		// 	if !exists {
+		// 		c.JSON(500, gin.H{
+		// 			"error": "user email not found",
+		// 		})
+		// 		return
+		// 	}
+		// 	username, exists := c.Get("username")
+		// 	if !exists {
+		// 		c.JSON(500, gin.H{
+		// 			"error": "username not found",
+		// 		})
+		// 		return
+		// 	}
 
-			gitClientI, exists := c.Get("git_client")
-			if !exists {
-				c.JSON(500, gin.H{
-					"error": "git client not found in context",
-				})
-				return
-			}
-			gitClient := gitClientI.(*gl.Client)
+		// 	gitClientI, exists := c.Get("git_client")
+		// 	if !exists {
+		// 		c.JSON(500, gin.H{
+		// 			"error": "git client not found in context",
+		// 		})
+		// 		return
+		// 	}
+		// 	gitClient := gitClientI.(*gl.Client)
 
-			jobs, _, err := glm.GetAllRunners(gitClient, 1, 20)
-			if err != nil {
-				c.JSON(500, gin.H{
-					"error": "error getting users runners",
-				})
-				return
-			}
+		// 	jobs, _, err := glm.GetAllRunners(gitClient, 1, 20)
+		// 	if err != nil {
+		// 		c.JSON(500, gin.H{
+		// 			"error": "error getting users runners",
+		// 		})
+		// 		return
+		// 	}
 
-			c.JSON(200, gin.H{
-				//"OK":            userToken,
-				"userID":        userID,
-				"GitlabDetails": gitClient,
-				"Email":         userEmail,
-				"username":      username,
-				"jobs":          jobs,
-			})
+		// 	c.JSON(200, gin.H{
+		// 		//"OK":            userToken,
+		// 		"userID":        userID,
+		// 		"GitlabDetails": gitClient,
+		// 		"Email":         userEmail,
+		// 		"username":      username,
+		// 		"jobs":          jobs,
+		// 	})
 
-		})
+		// })
 	}
 
 	r.GET("/mock_data", mock_data.ReturnMockData)

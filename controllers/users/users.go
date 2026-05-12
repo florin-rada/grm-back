@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	consterrors "github.com/florin-rada/grm-back/const_errors"
-	"github.com/florin-rada/grm-back/models/gitlab"
 	"github.com/florin-rada/grm-back/models/keycloak"
 	"github.com/florin-rada/grm-back/models/users"
 	"github.com/florin-rada/grm-back/utils"
@@ -168,37 +167,37 @@ func UpdateUserGitDetails(ctx *gin.Context) {
 	})
 }
 
-func TestGitConnection(ctx *gin.Context) {
-	args := struct {
-		InstanceURL string `json:"instance_url"`
-		Token       string `json:"token"`
-	}{}
-	err := ctx.BindJSON(&args)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-	gitClient, err := gitlab.GetClient(args.InstanceURL, args.Token)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "error connecting to gitlab",
-		})
-		return
-	}
-	_, _, err = gitlab.GetAllRunners(gitClient, 1, 100)
-	if err != nil {
-		ctx.JSON(http.StatusForbidden, gin.H{
-			"error": "token is not authorized",
-		})
-		return
-	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"error":    "",
-		"response": "OK",
-	})
-}
+// func TestGitConnection(ctx *gin.Context) {
+// 	args := struct {
+// 		InstanceURL string `json:"instance_url"`
+// 		Token       string `json:"token"`
+// 	}{}
+// 	err := ctx.BindJSON(&args)
+// 	if err != nil {
+// 		ctx.JSON(http.StatusBadRequest, gin.H{
+// 			"error": err.Error(),
+// 		})
+// 		return
+// 	}
+// 	gitClient, err := gitlab.GetClient(args.InstanceURL, args.Token)
+// 	if err != nil {
+// 		ctx.JSON(http.StatusBadRequest, gin.H{
+// 			"error": "error connecting to gitlab",
+// 		})
+// 		return
+// 	}
+// 	_, _, err = gitlab.GetAllRunners(gitClient, 1, 100)
+// 	if err != nil {
+// 		ctx.JSON(http.StatusForbidden, gin.H{
+// 			"error": "token is not authorized",
+// 		})
+// 		return
+// 	}
+// 	ctx.JSON(http.StatusOK, gin.H{
+// 		"error":    "",
+// 		"response": "OK",
+// 	})
+// }
 
 // not needed anymore, email confirmation handled by keycloak
 /* func ConfirmRegistration(ctx *gin.Context) {
