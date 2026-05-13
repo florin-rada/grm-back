@@ -4,6 +4,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/florin-rada/grm-back/config"
+	"github.com/florin-rada/grm-back/controllers/auth"
 	"github.com/florin-rada/grm-back/controllers/jobs"
 	"github.com/florin-rada/grm-back/controllers/login"
 	"github.com/florin-rada/grm-back/controllers/mock_data"
@@ -11,7 +13,7 @@ import (
 	"github.com/florin-rada/grm-back/controllers/tracking"
 	"github.com/florin-rada/grm-back/controllers/users"
 	"github.com/florin-rada/grm-back/database"
-	um "github.com/florin-rada/grm-back/models/users"
+	um "github.com/florin-rada/grm-back/models/user"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -83,11 +85,14 @@ func main() {
 		MaxAge:        12 * time.Hour,
 		AllowWildcard: true,
 	}))
-
+	cfg := config.LoadConfig()
 	// oc := offers.NewOfferController(database.PublicDB)
 	rc := runners.NewRunnerController(database.PublicDB)
 	jc := jobs.NewJobsController(database.PublicDB)
 	tc := tracking.NewTrackingController(database.PublicDB)
+	ac := auth.NewAuthController(database.PublicDB, cfg.AuthConfig)
+	r.GET("/auth/gitlab", ac.RedirectToGitlabAuth)
+	r.GET("/auth/gitlab/callback", ac.GitlabAuthCallback)
 	r.POST("/login", login.ValidateLogin)
 	r.POST("/register", users.Register)
 	r.GET("/validate_token", users.ValidateToken)
@@ -97,7 +102,7 @@ func main() {
 	authorized.Use(um.SetGitClientMiddleware())
 	{
 		authorized.GET("/git_runners", rc.ListUserRunnersFromGit)
-		authorized.GET("/git_details", users.GetUserGitDetails)
+		//authorized.GET("/git_details", users.GetUserGitDetails)
 		authorized.POST("/git_details", users.UpdateUserGitDetails)
 		//authorized.POST("/test_git_details", users.TestGitConnection)
 		authorized.GET("/test_get_jobs", jc.TestGetJobsBetween)

@@ -14,16 +14,16 @@ import (
 // the gitlab client is not stored as a field in the service, but is passed as an argument to the methods that need it
 // because depending on the user that is making the request, the gitlab client will be different (it will have a different access token)
 type RunnersService struct {
-	rr *RunnerRepository
+	repo *RunnerRepository
 }
 
 func NewRunnersService(rr *RunnerRepository) *RunnersService {
-	return &RunnersService{rr: rr}
+	return &RunnersService{repo: rr}
 }
 
 func (rs RunnersService) SyncRunnerStatus(client *gl.Client, runnerID int64) error {
 	fmt.Printf("Starting updating runner status for %d\n", runnerID)
-	r, err := rs.rr.GetRunner(runnerID)
+	r, err := rs.repo.GetRunner(runnerID)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (rs RunnersService) SyncRunnerStatus(client *gl.Client, runnerID int64) err
 	r.MaximumTimeout = rd.MaximumTimeout
 	r.ContactedAt = *rd.ContactedAt
 	fmt.Printf("Ending updating runner status for %d\n", runnerID)
-	return rs.rr.UpdateRunner(r)
+	return rs.repo.UpdateRunner(r)
 }
 
 func (rs RunnersService) GetAllRunners(client *gl.Client, page int64, perPage int64) ([]*gl.Runner, *gl.Response, error) {
@@ -95,11 +95,11 @@ func (rs RunnersService) UpdateRunnerOnGit(client *gl.Client, r runners.Runner) 
 }
 
 func (rs RunnersService) GetUserRunners(userID string) ([]runners.Runner, error) {
-	return rs.rr.GetUserRunners(userID)
+	return rs.repo.GetUserRunners(userID)
 }
 
 func (rs RunnersService) DeleteRunner(runnerID int64, userID string) error {
-	return rs.rr.DeleteRunner(runnerID, userID)
+	return rs.repo.DeleteRunner(runnerID, userID)
 }
 
 func (rs RunnersService) AddRunnerForUser(client *gl.Client, userID string, runnerID int64) error {
@@ -108,13 +108,13 @@ func (rs RunnersService) AddRunnerForUser(client *gl.Client, userID string, runn
 		return err
 	}
 
-	return rs.rr.AddRunnerForUser(rd, userID)
+	return rs.repo.AddRunnerForUser(rd, userID)
 }
 
 func (rs RunnersService) GetRunner(runnerID int64) (runners.Runner, error) {
-	return rs.rr.GetRunner(runnerID)
+	return rs.repo.GetRunner(runnerID)
 }
 
 func (rs RunnersService) UpdateRunner(r runners.Runner) error {
-	return rs.rr.UpdateRunner(r)
+	return rs.repo.UpdateRunner(r)
 }

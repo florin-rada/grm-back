@@ -16,7 +16,7 @@ import (
 	"github.com/florin-rada/grm-back/models/keycloak"
 	"github.com/florin-rada/grm-back/models/queue"
 	"github.com/florin-rada/grm-back/models/runners"
-	users_model "github.com/florin-rada/grm-back/models/users"
+	users_model "github.com/florin-rada/grm-back/models/user"
 
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"gorm.io/gorm"
@@ -95,9 +95,9 @@ func updateUserData(rr *runners.RunnerRepository) error {
 	}
 }
 
-func addUpdateStatusesToQueue(qm queue.QueueManager, gitClient *gl.Client, rr *runners.RunnerRepository, runnerID int64) {
+func addUpdateStatusesToQueue(qm queue.QueueManager, gitClient *gl.Client, rs *runners_service.RunnersService, runnerID int64) {
 	qm.AddToQueue(func(...interface{}) {
-		rr.SyncRunnerStatus(gitClient, runnerID)
+		rs.SyncRunnerStatus(gitClient, runnerID)
 	})
 }
 

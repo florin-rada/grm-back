@@ -1,13 +1,10 @@
 package pipelines
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	db "github.com/florin-rada/grm-back/database"
-
-	gl "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 type Pipeline struct {
@@ -20,24 +17,6 @@ type Pipeline struct {
 	URL            string    `json:"url" gorm:"url"`
 	CreatedAt      time.Time `json:"created_at" gorm:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at" gorm:"updated_at"`
-}
-
-func TranslateGLPipelineToPipeline(glp *gl.Pipeline) (*Pipeline, error) {
-	if glp == nil {
-		return nil, errors.New("Error, invalid gitlab pipeline received")
-	}
-
-	p := Pipeline{
-		ID:        glp.ID,
-		IID:       glp.IID,
-		ProjectID: glp.ProjectID,
-		Ref:       glp.Ref,
-		Status:    glp.Status,
-		URL:       glp.WebURL,
-		CreatedAt: *glp.CreatedAt,
-		UpdatedAt: *glp.UpdatedAt,
-	}
-	return &p, nil
 }
 
 func init() {

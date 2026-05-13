@@ -6,7 +6,7 @@ import (
 
 	consterrors "github.com/florin-rada/grm-back/const_errors"
 	"github.com/florin-rada/grm-back/models/keycloak"
-	"github.com/florin-rada/grm-back/models/users"
+	"github.com/florin-rada/grm-back/models/user"
 	"github.com/florin-rada/grm-back/utils"
 
 	"github.com/gin-gonic/gin"
@@ -35,7 +35,7 @@ func Register(ctx *gin.Context) {
 		})
 	}
 
-	u, err := users.CreateUser(args.Email, args.Password, args.FirstName, args.LastName)
+	u, err := user.CreateUser(args.Email, args.Password, args.FirstName, args.LastName)
 	if err != nil {
 		ctx.JSON(500, gin.H{
 			"error": err.Error(),
@@ -94,30 +94,30 @@ func RefreshToken(ctx *gin.Context) {
 }
 
 // we make sure to hide the git token. The git token must never be exposed
-func GetUserGitDetails(ctx *gin.Context) {
-	userID := utils.GetUserIdFromContext(ctx)
-	if userID == "" {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error": consterrors.ErrNotLoggedIn.Error(),
-		})
-		return
-	}
+// func GetUserGitDetails(ctx *gin.Context) {
+// 	userID := utils.GetUserIdFromContext(ctx)
+// 	if userID == "" {
+// 		ctx.JSON(http.StatusUnauthorized, gin.H{
+// 			"error": consterrors.ErrNotLoggedIn.Error(),
+// 		})
+// 		return
+// 	}
 
-	gld, err := users.GetUserGitDetails(userID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-	// we hide the token
-	// the git token must never be returned in the application as it is not used in the frontend
-	gld.Token = ""
-	ctx.JSON(http.StatusOK, gin.H{
-		"error":    "",
-		"response": gld,
-	})
-}
+// 	gld, err := users.GetUserGitDetails(userID)
+// 	if err != nil {
+// 		ctx.JSON(http.StatusInternalServerError, gin.H{
+// 			"error": err.Error(),
+// 		})
+// 		return
+// 	}
+// 	// we hide the token
+// 	// the git token must never be returned in the application as it is not used in the frontend
+// 	gld.Token = ""
+// 	ctx.JSON(http.StatusOK, gin.H{
+// 		"error":    "",
+// 		"response": gld,
+// 	})
+// }
 
 func UpdateUserGitDetails(ctx *gin.Context) {
 	userID := utils.GetUserIdFromContext(ctx)
@@ -127,7 +127,7 @@ func UpdateUserGitDetails(ctx *gin.Context) {
 		})
 		return
 	}
-	gld, err := users.GetUserGitDetails(userID)
+	gld, err := user.GetUserGitDetails(userID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -135,7 +135,7 @@ func UpdateUserGitDetails(ctx *gin.Context) {
 		return
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		gld = &users.GitlabDetails{
+		gld = &user.GitlabDetails{
 			IDUser: userID,
 		}
 	}
@@ -155,7 +155,7 @@ func UpdateUserGitDetails(ctx *gin.Context) {
 	gld.InstanceURL = args.InstanceURL
 	gld.Token = args.Token
 	gld.SyncRate = args.SyncRate
-	err = users.SetUserGitDetails(gld)
+	err = user.SetUserGitDetails(gld)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

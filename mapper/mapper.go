@@ -6,6 +6,7 @@ import (
 
 	consterrors "github.com/florin-rada/grm-back/const_errors"
 	jobs_model "github.com/florin-rada/grm-back/models/jobs"
+	pipelines_model "github.com/florin-rada/grm-back/models/pipelines"
 	"github.com/florin-rada/grm-back/models/runners"
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 )
@@ -57,4 +58,22 @@ func TranslateGLJobToJob(userID string, gljob *gl.Job) (*jobs_model.Job, error) 
 		Status:         gljob.Status,
 	}
 	return &j, nil
+}
+
+func TranslateGLPipelineToPipeline(glp *gl.Pipeline) (*pipelines_model.Pipeline, error) {
+	if glp == nil {
+		return nil, errors.New("Error, invalid gitlab pipeline received")
+	}
+
+	p := pipelines_model.Pipeline{
+		ID:        glp.ID,
+		IID:       glp.IID,
+		ProjectID: glp.ProjectID,
+		Ref:       glp.Ref,
+		Status:    glp.Status,
+		URL:       glp.WebURL,
+		CreatedAt: *glp.CreatedAt,
+		UpdatedAt: *glp.UpdatedAt,
+	}
+	return &p, nil
 }

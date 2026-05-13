@@ -17,12 +17,12 @@ import (
 )
 
 type JobsService struct {
-	jr       *JobsRepository
+	repo     *JobsRepository
 	syncRepo *synchronized.SynchronizedRepository
 }
 
 func NewJobsService(jr *JobsRepository, syncRepo *synchronized.SynchronizedRepository) *JobsService {
-	return &JobsService{jr: jr, syncRepo: syncRepo}
+	return &JobsService{repo: jr, syncRepo: syncRepo}
 }
 
 func (js JobsService) SyncRunnerJobs(client *gl.Client, userID string, runnerID int64) error {
@@ -47,11 +47,11 @@ func (js JobsService) SyncRunnerJobs(client *gl.Client, userID string, runnerID 
 		}
 		prjs = append(prjs, prj)
 	}
-	if err := js.jr.UpsertJobs(jobs); err != nil {
+	if err := js.repo.UpsertJobs(jobs); err != nil {
 		return err
 	}
 	// this is bad, either need to create a system to notify projectsModel or move the sync section to a stand alone package
-	resp := js.jr.db.Clauses(clause.OnConflict{
+	resp := js.repo.db.Clauses(clause.OnConflict{
 		UpdateAll: true,
 	}).Create(prjs)
 	if resp.Error != nil {
@@ -97,7 +97,7 @@ func (js JobsService) SyncJobsBetweenDates(client *gl.Client, userID string, run
 		}
 		jobs = append(jobs, *translated)
 	}
-	if err := js.jr.UpsertJobs(jobs); err != nil {
+	if err := js.repo.UpsertJobs(jobs); err != nil {
 		return err
 	}
 	err = js.syncRepo.SaveSyncedDates(userID, runnerID, *notSyncedStartDate, *notSyncedEndDate)
@@ -473,13 +473,13 @@ func GetJobsSince(client *gl.Client, runnerID int64, startDate *time.Time) ([]*g
 }
 
 func (js JobsService) GetRunnerJobs(idRunner uint, idUser string, page int, perPage int, order string) ([]jobs_model.Job, error) {
-	return js.jr.GetRunnerJobs(idRunner, idUser, page, perPage, order)
+	return js.repo.GetRunnerJobs(idRunner, idUser, page, perPage, order)
 }
 
 func (js JobsService) SearchRunnerJobs(idRunner int64, idUser string, params jobs_model.JobSearchArgs) ([]jobs_model.Job, error) {
-	return js.jr.SearchRunnerJobs(idRunner, idUser, params)
+	return js.repo.SearchRunnerJobs(idRunner, idUser, params)
 }
 
 func (js JobsService) SearchJobsForStatistics(idUser string, params jobs_model.StatisticsSearchArgs) ([]jobs_model.Job, error) {
-	return js.jr.SearchJobsForStatistics(idUser, params)
+	return js.repo.SearchJobsForStatistics(idUser, params)
 }

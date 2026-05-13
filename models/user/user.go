@@ -1,4 +1,4 @@
-package users
+package user
 
 import (
 	"errors"
@@ -13,7 +13,7 @@ import (
 	"github.com/florin-rada/grm-back/models/gitlab"
 	"github.com/florin-rada/grm-back/models/keycloak"
 	"github.com/florin-rada/grm-back/models/offers"
-
+	team "github.com/florin-rada/grm-back/models/team"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -40,7 +40,10 @@ type PrivateModel struct {
 
 type User struct {
 	gorm.Model
-	Email string `json:"email" gorm:"email,uniqueIndex:unique_email"`
+	Email    string      `json:"email" gorm:"email,uniqueIndex:unique_email"`
+	Username string      `json:"username" gorm:"username,uniqueIndex:unique_username"`
+	Fullname string      `json:"fullname" gorm:"fullname"`
+	Teams    []team.Team `gorm:"many2many:user_teams;"`
 }
 
 type UserOffer struct {
