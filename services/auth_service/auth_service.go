@@ -3,12 +3,14 @@ package authservice
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/florin-rada/grm-back/config"
 	consterrors "github.com/florin-rada/grm-back/const_errors"
+	userservice "github.com/florin-rada/grm-back/services/user_service"
 	gl "gitlab.com/gitlab-org/api/client-go/v2"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
@@ -16,11 +18,12 @@ import (
 
 type AuthService struct {
 	ar     *AuthRepository
+	us     *userservice.UserService
 	config *config.AuthConfig
 	oauth  *oauth2.Config
 }
 
-func NewAuthService(db *gorm.DB, config *config.AuthConfig) *AuthService {
+func NewAuthService(db *gorm.DB, config *config.AuthConfig, us *userservice.UserService) *AuthService {
 	return &AuthService{
 		ar: NewAuthRepository(db, config), config: config,
 		oauth: &oauth2.Config{
@@ -33,6 +36,7 @@ func NewAuthService(db *gorm.DB, config *config.AuthConfig) *AuthService {
 				TokenURL: config.GitlabTokenURL,
 			},
 		},
+		us: us,
 	}
 }
 
@@ -76,7 +80,19 @@ func (as *AuthService) CreateUserWithGitlabToken(ctx context.Context, token *oau
 	if err != nil {
 		return err
 	}
+	u, err := as.us.GetUserByEmail(userDataMap.Email)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	u.Email = userDataMap.Email
+	u.Username = userDataMap.Username
+	u.Fullname = userDataMap.Name
+	err = as.us.CreateUser(u)
+	if err != nil {
+		return err
+	}
 	fmt.Printf("%v\n", userDataMap)
+	fmt.Printf("Authenticated user: %+v", u)
 	return nil
 }
 

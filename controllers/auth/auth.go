@@ -5,6 +5,7 @@ import (
 
 	"github.com/florin-rada/grm-back/config"
 	auth_service "github.com/florin-rada/grm-back/services/auth_service"
+	userservice "github.com/florin-rada/grm-back/services/user_service"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -17,7 +18,7 @@ type AuthController struct {
 }
 
 func NewAuthController(db *gorm.DB, config *config.AuthConfig) *AuthController {
-	return &AuthController{db: db, Config: config, authService: auth_service.NewAuthService(db, config)}
+	return &AuthController{db: db, Config: config, authService: auth_service.NewAuthService(db, config, userservice.NewUserService(userservice.NewUserRepository(db)))}
 }
 
 func (ac *AuthController) RedirectToGitlabAuth(ctx *gin.Context) {
@@ -35,6 +36,10 @@ func (ac *AuthController) RedirectToGitlabAuth(ctx *gin.Context) {
 	}
 	sess.Set("oauth_state", state)
 	sess.Set("oauth_verifier", verifier)
+	referer := ctx.Request.Referer()
+	if referer != "" {
+		sess.Set("referer", referer)
+	}
 	sess.Save()
 	ctx.Redirect(http.StatusTemporaryRedirect, authURL)
 }
@@ -69,10 +74,14 @@ func (ac *AuthController) GitlabAuthCallback(ctx *gin.Context) {
 	sess.Set("access_token", token.AccessToken)
 	sess.Set("refresh_token", token.RefreshToken)
 	sess.Save()
-	ctx.JSON(http.StatusOK, gin.H{
-		"error":         "",
-		"access_token":  token.AccessToken,
-		"refresh_token": token.RefreshToken,
-	})
-
+	referer := sess.Get("referer")
+	if referer != nil {
+		ctx.Redirect(http.StatusTemporaryRedirect, referer.(string))
+	} else {
+		ctx.JSON(http.StatusOK, gin.H{
+			"error":         "",
+			"access_token":  token.AccessToken,
+			"refresh_token": token.RefreshToken,
+		})
+	}
 }
